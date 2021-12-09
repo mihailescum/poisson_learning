@@ -35,7 +35,7 @@ plt.imshow(W - np.diag(np.diag(W)), interpolation="none")
 plt.colorbar()
 plt.show()
 
-solver = PoissonSolver(eps=eps, p=32, maxiter=100)
+solver = PoissonSolver(eps=eps, p=2, maxiter=100)
 solver.fit(W, y)
 output = solver._output[:, 0]
 

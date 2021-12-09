@@ -10,7 +10,7 @@ from poisson_learning import PoissonSolver
 @pytest.fixture(params=[(2, 1)])
 def solver(request):
     p, eps = request.param
-    return PoissonSolver(eps=eps, p=p)
+    return PoissonSolver(eps=eps, p=p, disp=True, tol=1e-10, maxiter=10000)
 
 
 @pytest.mark.parametrize(

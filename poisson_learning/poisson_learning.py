@@ -9,19 +9,24 @@ class PoissonSolver:
         eps,
         p,
         rescale_minimizer=True,
-        method="minimization",
+        method="mixed",
         rhs="dirac_delta",
         tol=1e-5,
         maxiter=100,
+        disp=False,
     ):
         self.eps = eps
         self.p = p
 
         self.rescale_minimizer = rescale_minimizer
         self.method = method
+        if method == "iterative" and p != 2:
+            raise ValueError("For iterative scheme `p` has to equal 2!")
+
         self.rhs_method = rhs
         self.tol = tol
         self.maxiter = maxiter
+        self.disp = disp
 
         self._output = None
 
@@ -41,14 +46,21 @@ class PoissonSolver:
             if n_classes == 2 and c == 1:
                 result = -self._output[:, 0]
             else:
-                result = self._solve_using_minimizer(
-                    u0=f[:, c],
-                    W=W,
-                    b=f[:, c],
-                    p=self.p,
-                    tol=self.tol,
-                    maxiter=self.maxiter,
-                )
+                if self.method == "minimizer":
+                    result = self._solve_using_minimizer(
+                        u0=f[:, c],
+                        W=W,
+                        b=f[:, c],
+                        p=self.p,
+                        tol=self.tol,
+                        maxiter=self.maxiter,
+                    )
+                elif self.method == "iterative":
+                    result = self._solve_using_iteration()
+                elif self.method == "mixed":
+                    raise NotImplementedError()
+                else:
+                    raise ValueError(f"Method '{self.method}' not understood.")
 
             self._output[:, c] = result
 
@@ -95,14 +107,14 @@ class PoissonSolver:
         D = W.sum(axis=1).A1
         return D
 
-    def _solve_using_minimizer(self, u0, W, b, p, tol, maxiter):
+    def _solve_using_minimizer(self, u0, W, b, maxiter):
         W = W.copy()
         W = W - spsparse.diags(W.diagonal())
         D = PoissonSolver.get_node_degrees(W)
         result = spoptimize.minimize(
             PoissonSolver.J,
             u0,
-            args=(W, b, p),
+            args=(W, b, self.p),
             jac=PoissonSolver.grad_J,
             constraints=(
                 {
@@ -112,8 +124,10 @@ class PoissonSolver:
                     "args": (D,),
                 }
             ),
-            options={"maxiter": maxiter, "disp": True},
-            tol=tol,
+            options={"maxiter": maxiter, "disp": self.disp},
+            tol=self.tol,
         )
         return result.x
 
+    def _solve_using_iteration(self):
+        pass
