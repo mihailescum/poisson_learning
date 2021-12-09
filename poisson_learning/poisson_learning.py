@@ -9,8 +9,9 @@ class PoissonSolver:
         eps,
         p,
         rescale_minimizer=True,
-        method="mixed",
+        method="homotopy",
         rhs="dirac_delta",
+        stepsize=5,
         tol=1e-5,
         maxiter=100,
         disp=False,
@@ -47,17 +48,10 @@ class PoissonSolver:
                 result = -self._output[:, 0]
             else:
                 if self.method == "minimizer":
-                    result = self._solve_using_minimizer(
-                        u0=f[:, c],
-                        W=W,
-                        b=f[:, c],
-                        p=self.p,
-                        tol=self.tol,
-                        maxiter=self.maxiter,
-                    )
+                    result = self._solve_using_minimizer(u0=f[:, c], W=W, b=f[:, c],)
                 elif self.method == "iterative":
-                    result = self._solve_using_iteration()
-                elif self.method == "mixed":
+                    result = self._solve_using_iteration(W=W, b=f[:, c])
+                elif self.method == "homotopy":
                     raise NotImplementedError()
                 else:
                     raise ValueError(f"Method '{self.method}' not understood.")
@@ -107,7 +101,7 @@ class PoissonSolver:
         D = W.sum(axis=1).A1
         return D
 
-    def _solve_using_minimizer(self, u0, W, b, maxiter):
+    def _solve_using_minimizer(self, u0, W, b):
         W = W.copy()
         W = W - spsparse.diags(W.diagonal())
         D = PoissonSolver.get_node_degrees(W)
@@ -124,10 +118,47 @@ class PoissonSolver:
                     "args": (D,),
                 }
             ),
-            options={"maxiter": maxiter, "disp": self.disp},
+            options={"maxiter": self.maxiter, "disp": self.disp},
             tol=self.tol,
         )
         return result.x
 
-    def _solve_using_iteration(self):
-        pass
+    def _solve_using_iteration(self, W, b):
+        n = b.size
+
+        degrees = PoissonSolver.get_node_degrees(W)
+        D = spsparse.diags(degrees)
+        degrees_inv = 1.0 / degrees
+
+        L = D - W
+
+        u = np.zeros(n)
+        u_prev = np.full(n, np.inf)
+
+        p = np.zeros(n)
+        p[np.abs(b) > 1e-8] = 1.0
+        p_infty = W @ np.ones(n) / (np.ones(n).T @ W @ np.ones(n))
+
+        it = 0
+        mixing_time_reached = False
+        while np.abs(u - u_prev).max() >= self.tol:
+            if np.abs(p - p_infty).max() < 1 / n:
+                mixing_time_reached = True
+                break
+            else:
+                u_prev = u
+
+            u = u + degrees_inv * (b - L @ u)
+            p = W @ (degrees_inv * p)
+            it += 1
+
+        if self.disp:
+            if not mixing_time_reached:
+                print("Iterative approach terminated successfully")
+            else:
+                print("Iterative approach reached mixing time")
+
+            print("\tCurrent function value:", PoissonSolver.J(u, W, b, 2))
+            print("\tIterations:", it)
+
+        return u

@@ -73,19 +73,38 @@ def test_rhs_dirac_delta(W, encoded_labels, solver, expected):
     ],
 )
 def test_solve_using_minimizer(u0, W, b, p, solver, expected):
-    output = solver._solve_using_minimizer(
-        u0=u0, W=W, b=b, p=p, tol=1e-16, maxiter=1000
-    )
+    if p != solver.p:
+        pytest.skip("`p` values don't match.")
 
-    # Assert that `output` has mean zero
-    D = PoissonSolver.get_node_degrees(W)
-    weighted_mean = np.dot(output, D)
-    npt.assert_allclose(weighted_mean, 0.0)
+    output = solver._solve_using_minimizer(u0=u0, W=W, b=b)
+    npt.assert_allclose(expected, output)
 
-    # Assert that output solves L_p(u)=b
-    grad_J = PoissonSolver.grad_J(output, W, b, p)
-    npt.assert_allclose(grad_J, 0.0)
 
+@pytest.mark.parametrize(
+    "W, b, p, expected",
+    [
+        (
+            spsparse.csr_matrix(
+                np.array(
+                    [
+                        [0.0, 1.0, 0.0, 0.0],
+                        [1.0, 0.0, 1.0, 1.0],
+                        [0.0, 1.0, 0.0, 1.0],
+                        [0.0, 1.0, 1.0, 0.0],
+                    ]
+                )
+            ),
+            np.array([1.0, 0.0, 0.0, -1.0]),
+            2,
+            np.array([1.125, 0.125, -0.20833333, -0.54166667]),
+        )
+    ],
+)
+def test_solve_using_iteration(W, b, p, solver, expected):
+    if p != solver.p:
+        pytest.skip("`p` values don't match.")
+
+    output = solver._solve_using_iteration(W=W, b=b)
     npt.assert_allclose(expected, output)
 
 
