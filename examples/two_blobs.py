@@ -1,38 +1,42 @@
 import numpy as np
 from scipy.spatial.distance import pdist, squareform
+from scipy import sparse
+
 import matplotlib.pyplot as plt
 
 from poisson_learning import PoissonSolver
 
-n = 10
-d = 2
-X_labeled = np.array([[-10.0, -10.0], [10, 10]])
-Y_labeled = np.array([0, 1])
+from graphlearning import poisson2
 
+np.random.seed(1)
+
+n = 1000
+d = 2
+X_labeled = np.array([[-2.0, -2.0], [2.0, 2.0]])
+Y_labeled = np.array([0, 1])
 X1 = np.random.normal(
-    loc=[-10.0, -10.0], scale=1, size=((n - X_labeled.shape[0]) // 2, 2)
+    loc=X_labeled[0], scale=1, size=((n - X_labeled.shape[0]) // 2, 2)
 )
 X2 = np.random.normal(
-    loc=[10.0, 10.0], scale=1, size=((n - X_labeled.shape[0]) // 2, 2)
+    loc=X_labeled[1], scale=1.5, size=((n - X_labeled.shape[0]) // 2, 2)
 )
 X = np.concatenate([X_labeled, X1, X2])
 y = Y_labeled
 
 dist = squareform(pdist(X))
-eps = 1  # (np.log(n) ** 2 / n) ** d
+eps = 1  # 10 * (np.log(n) / np.sqrt(n)) ** d
 W = np.exp(-((dist / eps) ** 2))
+W[W < 1e-6] = 0
+plt.plot((W.sum(axis=1)) * eps ** d)
+plt.show()
 print("eps:", eps)
 
 plt.imshow(W - np.diag(np.diag(W)), interpolation="none")
 plt.colorbar()
 plt.show()
 
-# plt.scatter(X[:, 0], X[:, 1], c="grey")
-# plt.scatter(X_labeled[:, 0], X_labeled[:, 1], c=Y_labeled)
-# plt.show()
-
-solver = PoissonSolver(W, eps, p=2)
-solver.fit(X, y)
+solver = PoissonSolver(eps=eps, p=32, maxiter=100)
+solver.fit(W, y)
 output = solver._output[:, 0]
 
 fig = plt.figure()

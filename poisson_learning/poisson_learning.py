@@ -1,38 +1,58 @@
 import numpy as np
-from scipy import linalg
+from scipy import sparse as spsparse
+from scipy import optimize as spoptimize
 
 
 class PoissonSolver:
-    def __init__(self, W, eps, p, method="minimization", rhs="dirac_delta"):
+    def __init__(
+        self,
+        W,
+        eps,
+        p,
+        method="minimization",
+        rhs="dirac_delta",
+        tol=1e-5,
+        maxiter=100,
+    ):
         self.method = method
         self.rhs_method = rhs
-        self.W = W
         self.eps = eps
         self.p = p
+        self.tol = tol
+        self.maxiter = maxiter
 
         self._output = None
-        self._error = None
-        self._iterations = None
 
-    def fit(self, X, y):
+    def fit(self, W, y):
+        W = spsparse.csr_matrix(W)
         encoded_labels = self._encode_labels(y)
-        n_samples = X.shape[0]
+
+        n_samples = encoded_labels.shape[0]
         n_classes = encoded_labels.shape[1]
 
         if self.rhs_method.lower() == "dirac_delta":
-            f = self._rhs_dirac_delta(X, encoded_labels)
+            f = self._rhs_dirac_delta(W, encoded_labels)
 
         self._output = np.full((n_samples, n_classes), np.nan)
 
-        D = np.sum(self.W, axis=1) - np.diag(self.W)
         for c in range(n_classes):
-            result, error, it = self._compute_newton_approximation(
-                u0=f[:, c], W=self.W, f=f[:, c], p=self.p, eps=self.eps
-            )
-            mean = np.dot(D, result)
-            result -= mean / D.sum()
+            if n_classes == 2 and c == 1:
+                result = -self._output[:, 0]
+            else:
+                result = self._solve_using_minimizer(
+                    u0=f[:, c],
+                    W=W,
+                    b=f[:, c],
+                    p=self.p,
+                    tol=self.tol,
+                    maxiter=self.maxiter,
+                ).x
 
             self._output[:, c] = result
+
+        # Reweight minimizer
+        mu = n_samples * self.eps ** self.p
+        self._output = mu ** (1 / (self.p - 1)) * self._output
 
     def _encode_labels(self, y):
         n_classes = np.unique(y).size
@@ -40,8 +60,8 @@ class PoissonSolver:
         encoded[np.arange(y.size), y] = 1.0
         return encoded
 
-    def _rhs_dirac_delta(self, X, encoded_labels):
-        n_samples = X.shape[0]
+    def _rhs_dirac_delta(self, W, encoded_labels):
+        n_samples = W.shape[0]
         n_classes = encoded_labels.shape[1]
         recentered_labels = encoded_labels - encoded_labels.mean(axis=0)
 
@@ -49,21 +69,43 @@ class PoissonSolver:
         rhs[: recentered_labels.shape[0]] = recentered_labels
         return rhs
 
-    def _compute_newton_approximation(self, u0, W, f, p, eps, tol=1e-5, max_iter=100):
-        u = u0.copy()
-        n = u.shape[0]
-        error = np.inf
+    def J(u, W, b, p):
+        difference_matrix = np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** p
+        Ju = 1 / p * W.multiply(difference_matrix).sum() - np.dot(u, b)
+        return Ju
 
-        for it in range(max_iter):
-            if error <= tol:
-                break
+    def grad_J(u, W, b, p):
+        A = W.multiply(np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2))
+        D = spsparse.diags(A.sum(axis=1).A1)
+        grad_Ju = (D - A) @ u - b
+        return grad_Ju
 
-            Lu = W * np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2)
-            Lu_inv = linalg.inv(Lu)
+    def g(u, D):
+        g = np.dot(u, D)
+        return g
 
-            u_new = (p - 2) / (p - 1) * u + eps ** p * n / (p - 1) * (Lu_inv @ f)
-            error = np.sum(np.abs(u - u_new))
-            u = u_new
+    def grad_g(u, D):
+        return D
 
-        return u, error, it
+    def _solve_using_minimizer(self, u0, W, b, p, tol, maxiter):
+        W = W.copy()
+        W = W - spsparse.diags(W.diagonal())
+        D = W.sum(axis=0).A1
+        result = spoptimize.minimize(
+            PoissonSolver.J,
+            u0,
+            args=(W, b, p),
+            jac=PoissonSolver.grad_J,
+            constraints=(
+                {
+                    "type": "eq",
+                    "fun": PoissonSolver.g,
+                    "jac": PoissonSolver.grad_g,
+                    "args": (D,),
+                }
+            ),
+            options={"maxiter": maxiter, "disp": True},
+            tol=tol,
+        )
+        return result
 
