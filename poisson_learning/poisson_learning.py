@@ -29,7 +29,7 @@ class PoissonSolver:
         W = spsparse.csr_matrix(W)
         encoded_labels = self._encode_labels(y)
 
-        n_samples = encoded_labels.shape[0]
+        n_samples = W.shape[0]
         n_classes = encoded_labels.shape[1]
 
         if self.rhs_method.lower() == "dirac_delta":
@@ -74,14 +74,14 @@ class PoissonSolver:
 
     def J(u, W, b, p):
         difference_matrix = np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** p
-        Ju = 1.0 / p * W.multiply(difference_matrix).sum() - np.dot(u, b)
+        Ju = 0.5 / p * W.multiply(difference_matrix).sum() - np.dot(u, b)
         return Ju
 
     def grad_J(u, W, b, p):
         A = W.multiply(np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2))
-        # TODO: use _get_degrees here?
+        # TODO: use get_node_degrees here?
         D = spsparse.diags(A.sum(axis=1).A1)
-        grad_Ju = (D - A) @ u - b
+        grad_Ju = 1.0 * (D - A) @ u - b
         return grad_Ju
 
     def g(u, D):

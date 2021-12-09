@@ -26,7 +26,7 @@ y = Y_labeled
 dist = squareform(pdist(X))
 eps = 1  # 10 * (np.log(n) / np.sqrt(n)) ** d
 W = np.exp(-((dist / eps) ** 2))
-W[W < 1e-6] = 0
+W[W < 1e-4] = 0
 plt.plot((W.sum(axis=1)) * eps ** d)
 plt.show()
 print("eps:", eps)
