@@ -5,14 +5,7 @@ from scipy import optimize as spoptimize
 
 class PoissonSolver:
     def __init__(
-        self,
-        W,
-        eps,
-        p,
-        method="minimization",
-        rhs="dirac_delta",
-        tol=1e-5,
-        maxiter=100,
+        self, eps, p, method="minimization", rhs="dirac_delta", tol=1e-5, maxiter=100,
     ):
         self.method = method
         self.rhs_method = rhs
