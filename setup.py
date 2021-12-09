@@ -5,6 +5,7 @@ from distutils.core import setup
 install_requires = [
     "numpy >= 1.21.1",
     "scipy >= 1.7.2",
+    "matplotlib >= 3.4.3",
 ]
 
 setup(

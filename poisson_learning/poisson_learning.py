@@ -5,12 +5,21 @@ from scipy import optimize as spoptimize
 
 class PoissonSolver:
     def __init__(
-        self, eps, p, method="minimization", rhs="dirac_delta", tol=1e-5, maxiter=100,
+        self,
+        eps,
+        p,
+        rescale_minimizer=True,
+        method="minimization",
+        rhs="dirac_delta",
+        tol=1e-5,
+        maxiter=100,
     ):
-        self.method = method
-        self.rhs_method = rhs
         self.eps = eps
         self.p = p
+
+        self.rescale_minimizer = rescale_minimizer
+        self.method = method
+        self.rhs_method = rhs
         self.tol = tol
         self.maxiter = maxiter
 
@@ -39,13 +48,14 @@ class PoissonSolver:
                     p=self.p,
                     tol=self.tol,
                     maxiter=self.maxiter,
-                ).x
+                )
 
             self._output[:, c] = result
 
         # Reweight minimizer
-        mu = n_samples * self.eps ** self.p
-        self._output = mu ** (1 / (self.p - 1)) * self._output
+        if self.rescale_minimizer:
+            mu = n_samples * (self.eps ** self.p)
+            self._output = mu ** (1.0 / (self.p - 1)) * self._output
 
     def _encode_labels(self, y):
         n_classes = np.unique(y).size
@@ -64,11 +74,12 @@ class PoissonSolver:
 
     def J(u, W, b, p):
         difference_matrix = np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** p
-        Ju = 1 / p * W.multiply(difference_matrix).sum() - np.dot(u, b)
+        Ju = 1.0 / p * W.multiply(difference_matrix).sum() - np.dot(u, b)
         return Ju
 
     def grad_J(u, W, b, p):
         A = W.multiply(np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2))
+        # TODO: use _get_degrees here?
         D = spsparse.diags(A.sum(axis=1).A1)
         grad_Ju = (D - A) @ u - b
         return grad_Ju
@@ -80,10 +91,14 @@ class PoissonSolver:
     def grad_g(u, D):
         return D
 
+    def get_node_degrees(W):
+        D = W.sum(axis=1).A1
+        return D
+
     def _solve_using_minimizer(self, u0, W, b, p, tol, maxiter):
         W = W.copy()
         W = W - spsparse.diags(W.diagonal())
-        D = W.sum(axis=0).A1
+        D = PoissonSolver.get_node_degrees(W)
         result = spoptimize.minimize(
             PoissonSolver.J,
             u0,
@@ -100,5 +115,5 @@ class PoissonSolver:
             options={"maxiter": maxiter, "disp": True},
             tol=tol,
         )
-        return result
+        return result.x
 

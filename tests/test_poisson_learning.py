@@ -10,7 +10,7 @@ from poisson_learning import PoissonSolver
 @pytest.fixture(params=[(2, 1)])
 def solver(request):
     p, eps = request.param
-    return PoissonSolver(eps, p)
+    return PoissonSolver(eps=eps, p=p)
 
 
 @pytest.mark.parametrize(
@@ -48,6 +48,61 @@ def test_encode_labels(y, solver, expected):
 )
 def test_rhs_dirac_delta(W, encoded_labels, solver, expected):
     output = solver._rhs_dirac_delta(W, encoded_labels)
+    npt.assert_allclose(expected, output)
+
+
+@pytest.mark.parametrize(
+    "u0, W, b, p, expected",
+    [
+        (
+            np.array([0.0, 0.0, 0.0]),
+            spsparse.csr_matrix(
+                np.array([[0.0, 1.0, 0.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0],])
+            ),
+            np.array([1.0, 0.0, -1.0]),
+            2,
+            np.array([1.0, 0.0, -1.0]),
+        )
+    ],
+)
+def test_solve_using_minimizer(u0, W, b, p, solver, expected):
+    output = solver._solve_using_minimizer(
+        u0=u0, W=W, b=b, p=p, tol=1e-16, maxiter=1000
+    )
+    npt.assert_allclose(expected, output)
+
+    D = PoissonSolver.get_node_degrees(W)
+    weighted_mean = np.dot(output, D)
+    npt.assert_allclose(weighted_mean, 0.0)
+
+
+@pytest.mark.parametrize(
+    "W, expected",
+    [
+        (
+            spsparse.csr_matrix(
+                np.array([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
+            ),
+            np.array([2.0, 2.0, 1.0]),
+        ),
+        (
+            spsparse.csr_matrix(
+                np.array(
+                    [
+                        [0.0, 1.0, 0.0, 0.0, 0.0],
+                        [0.1, 0.0, 1.0, 0.0, 0.0],
+                        [0.0, 1.0, 0.0, 1.0, 0.0],
+                        [0.0, 0.0, 1.0, 0.0, 1.0],
+                        [0.0, 0.0, 0.0, 0.5, 0.0],
+                    ]
+                )
+            ),
+            np.array([1.0, 1.1, 2.0, 2.0, 0.5]),
+        ),
+    ],
+)
+def test_get_node_degrees(W, expected):
+    output = PoissonSolver.get_node_degrees(W)
     npt.assert_allclose(expected, output)
 
 
