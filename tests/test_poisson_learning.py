@@ -60,6 +60,22 @@ def test_rhs_dirac_delta(W, encoded_labels, solver, expected):
                 np.array(
                     [
                         [0.0, 1.0, 0.0, 0.0],
+                        [1.0, 0.0, 1.0, 0.0],
+                        [0.0, 1.0, 0.0, 1.0],
+                        [0.0, 0.0, 1.0, 0.0],
+                    ]
+                )
+            ),
+            np.array([1.0, 0.0, 0.0, -1.0]),
+            2,
+            np.array([1.5, 0.5, -0.5, -1.5]),
+        ),
+        (
+            np.array([0.0, 0.0, 0.0, 0.0]),
+            spsparse.csr_matrix(
+                np.array(
+                    [
+                        [0.0, 1.0, 0.0, 0.0],
                         [1.0, 0.0, 1.0, 1.0],
                         [0.0, 1.0, 0.0, 1.0],
                         [0.0, 1.0, 1.0, 0.0],
@@ -69,7 +85,7 @@ def test_rhs_dirac_delta(W, encoded_labels, solver, expected):
             np.array([1.0, 0.0, 0.0, -1.0]),
             2,
             np.array([1.125, 0.125, -0.20833333, -0.54166667]),
-        )
+        ),
     ],
 )
 def test_solve_using_minimizer(u0, W, b, p, solver, expected):

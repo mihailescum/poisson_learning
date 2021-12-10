@@ -23,6 +23,57 @@ class PoissonSolver:
         maxiter=100,
         disp=False,
     ):
+        """ Initialized a solver for poisson learning [1].
+
+        Parameters
+        ----------
+        eps
+            Epsilon used when constructing the graph
+
+        p
+            Power of the p-Laplacian
+
+        rescale_minimizer
+            
+
+        method
+            Method you want to use to solve the poisson learning problem. Can be
+            "iterative": Solves the problem for `p=2` in using an iterative approach
+                described in Section 3 of [1].
+            "minimizer": Solves the problem for general `p` by minimizing the objective
+                Function outlined in Section 2.2 of [1] (the variational approach).
+            "homotopy": Uses the idea of p-homotopy as described in [2]: First, solves
+                the problem for `p=2` using the iterative approach for speed and uses this
+                as initial guess for an ascending sequence of p-values for the minimizing
+                approach, until the desired `p` is reached. This yields faster convergence.
+
+        rhs
+            Function on the right hand side of the laplace equation. Can be
+            "dirac_delta": $ \sum_j^M (y_j - \bar y) \delta_ij $, where $(y_j)_{j=1}^M$
+                are the label vectors, and $\bar y$ is the average label value.
+
+        stepsize
+
+
+        tol
+            Desired tolerance in the approximation shemes
+
+        maxiter
+            Maximum number of iterations
+
+        disp
+            Display convergence messages
+
+        References
+        ----------
+        [1] "Poisson Learning: Graph Based Semi-Supervised Learning At Very Low Label Rates"
+        by J Calder, B Cook, M Thorpe, D Slepčev; Preprint (arXiv); 
+        https://arxiv.org/abs/2006.11184
+
+
+        [2] "Algorithms for l^p-based semi-supervised Learning on Graphs" by MF Rios, J Calder
+        and G Lerman; Preprint (arXiv); https://arxiv.org/abs/1901.05031
+        """
         self.eps = eps
         self.p = p
 
