@@ -22,7 +22,10 @@ def objective_p_laplace_gradient(u, W, b, p):
     [1] "Algorithms for l^p-based semi-supervised Learning on Graphs" by MF Rios, J Calder
     and G Lerman; Preprint (arXiv); https://arxiv.org/abs/1901.05031
     """
-    A = W.multiply(np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2))
+    if p != 2:
+        A = W.multiply(np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2))
+    else:
+        A = W
     # TODO: use get_node_degrees here?
     D = spsparse.diags(A.sum(axis=1).A1)
     grad_Ju = 1.0 * (D - A) @ u - b

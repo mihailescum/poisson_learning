@@ -37,7 +37,7 @@ fig.colorbar(im, cax=cax, orientation="vertical")
 
 plt.show()
 
-solver = pl.PoissonSolver(eps=eps, p=16, method="minimizer", maxiter=1000, disp=True)
+solver = pl.PoissonSolver(eps=eps, p=2, method="minimizer", maxiter=1000, disp=True)
 solver.fit(W, y)
 output = solver._output[:, 0]
 
