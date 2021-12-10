@@ -9,10 +9,10 @@ install_requires = [
 ]
 
 setup(
-    name="PoissonLearning",
+    name="poissonlearning",
     version="0.0.1",
     author="Max Mihailescu",
-    packages=["poisson_learning"],
+    packages=["poissonlearning"],
     install_requires=install_requires,
 )
 

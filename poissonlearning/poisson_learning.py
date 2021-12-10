@@ -2,6 +2,13 @@ import numpy as np
 from scipy import sparse as spsparse
 from scipy import optimize as spoptimize
 
+from .objective_functions import (
+    objective_p_laplace,
+    objective_p_laplace_gradient,
+    objective_weighted_mean,
+    objective_weighted_mean_gradient,
+)
+
 
 class PoissonSolver:
     def __init__(
@@ -78,25 +85,6 @@ class PoissonSolver:
         rhs[: recentered_labels.shape[0]] = recentered_labels
         return rhs
 
-    def J(u, W, b, p):
-        difference_matrix = np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** p
-        Ju = 0.5 / p * W.multiply(difference_matrix).sum() - np.dot(u, b)
-        return Ju
-
-    def grad_J(u, W, b, p):
-        A = W.multiply(np.abs(u[:, np.newaxis] - u[np.newaxis, :]) ** (p - 2))
-        # TODO: use get_node_degrees here?
-        D = spsparse.diags(A.sum(axis=1).A1)
-        grad_Ju = 1.0 * (D - A) @ u - b
-        return grad_Ju
-
-    def g(u, D):
-        g = np.dot(u, D)
-        return g
-
-    def grad_g(u, D):
-        return D
-
     def get_node_degrees(W):
         D = W.sum(axis=1).A1
         return D
@@ -106,15 +94,15 @@ class PoissonSolver:
         W = W - spsparse.diags(W.diagonal())
         D = PoissonSolver.get_node_degrees(W)
         result = spoptimize.minimize(
-            PoissonSolver.J,
+            objective_p_laplace,
             u0,
             args=(W, b, self.p),
-            jac=PoissonSolver.grad_J,
+            jac=objective_p_laplace_gradient,
             constraints=(
                 {
                     "type": "eq",
-                    "fun": PoissonSolver.g,
-                    "jac": PoissonSolver.grad_g,
+                    "fun": objective_weighted_mean,
+                    "jac": objective_weighted_mean_gradient,
                     "args": (D,),
                 }
             ),
@@ -158,7 +146,7 @@ class PoissonSolver:
             else:
                 print("Iterative approach reached mixing time")
 
-            print("\tCurrent function value:", PoissonSolver.J(u, W, b, 2))
+            print("\tCurrent function value:", objective_p_laplace(u, W, b, 2))
             print("\tIterations:", it)
 
         return u
