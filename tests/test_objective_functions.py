@@ -130,9 +130,7 @@ def test_objective_p_laplace_gradient(u, W, b, p):
     expected = np.zeros(n)
     for i in range(n):
         for j in range(n):
-            expected[i] += (
-                0.5 * W[i, j] * np.abs(u[i] - u[j]) ** (p - 2) * (u[i] - u[j])
-            )
+            expected[i] += W[i, j] * np.abs(u[i] - u[j]) ** (p - 2) * (u[i] - u[j])
 
         expected[i] -= b[i]
 
