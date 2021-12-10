@@ -2,6 +2,7 @@ import numpy as np
 from scipy import sparse as spsparse
 from scipy import optimize as spoptimize
 
+from .graphutils import node_degrees
 from .objective_functions import (
     objective_p_laplace,
     objective_p_laplace_gradient,
@@ -136,14 +137,10 @@ class PoissonSolver:
         rhs[: recentered_labels.shape[0]] = recentered_labels
         return rhs
 
-    def get_node_degrees(W):
-        D = W.sum(axis=1).A1
-        return D
-
     def _solve_using_minimizer(self, u0, W, b):
-        W = W.copy()
+        D = node_degrees(W)
         W = W - spsparse.diags(W.diagonal())
-        D = PoissonSolver.get_node_degrees(W)
+
         result = spoptimize.minimize(
             objective_p_laplace,
             u0,
@@ -165,7 +162,7 @@ class PoissonSolver:
     def _solve_using_iteration(self, W, b):
         n = b.size
 
-        degrees = PoissonSolver.get_node_degrees(W)
+        degrees = node_degrees(W)
         D = spsparse.diags(degrees)
         degrees_inv = 1.0 / degrees
 

@@ -1,16 +1,15 @@
 import numpy as np
-from scipy.spatial.distance import pdist, squareform
 
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from poissonlearning import PoissonSolver
+import poissonlearning as pl
 
 import plotting
 
 np.random.seed(1)
 
-n = 100
-d = 2
+n = 1000
 X_labeled = np.array([[-1.0, -1.0], [1.0, 1.0]])
 Y_labeled = np.array([0, 1])
 X1 = np.random.uniform(
@@ -22,19 +21,23 @@ X2 = np.random.uniform(
 X = np.concatenate([X_labeled, X1, X2])
 y = Y_labeled
 
-dist = squareform(pdist(X))
+dist = pl.distance_matrix(X)
 eps = 0.1  # 10 * (np.log(n) / np.sqrt(n)) ** d
-W = (eps ** -d) * np.exp(-((dist / eps) ** 2))
-W[W < 1e-4] = 0
-plt.plot((W.sum(axis=1)) * eps ** d)
-plt.show()
 print("eps:", eps)
 
-plt.imshow(W - np.diag(np.diag(W)), interpolation="none")
-plt.colorbar()
+W = pl.kernel_exponential(dist, eps, d=2, cutoff=1e-4)
+
+fig, ax = plt.subplots(2, 1)
+ax[0].plot(pl.node_degrees(W))
+
+divider = make_axes_locatable(ax[1])
+cax = divider.append_axes("right", size="5%", pad=0.05)
+im = ax[1].imshow((W - np.diag(W.diagonal())) * (eps ** 2), interpolation="none")
+fig.colorbar(im, cax=cax, orientation="vertical")
+
 plt.show()
 
-solver = PoissonSolver(eps=eps, p=16, method="minimizer", maxiter=1000, disp=True)
+solver = pl.PoissonSolver(eps=eps, p=16, method="minimizer", maxiter=1000, disp=True)
 solver.fit(W, y)
 output = solver._output[:, 0]
 

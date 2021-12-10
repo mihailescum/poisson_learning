@@ -4,7 +4,7 @@ import scipy.sparse as spsparse
 import pytest
 import numpy.testing as npt
 
-from poissonlearning import PoissonSolver
+from poissonlearning.poisson_learning import PoissonSolver
 
 
 @pytest.fixture(params=[(2, 1)])
@@ -121,34 +121,4 @@ def test_solve_using_iteration(W, b, p, solver, expected):
         pytest.skip("`p` values don't match.")
 
     output = solver._solve_using_iteration(W=W, b=b)
-    npt.assert_allclose(expected, output)
-
-
-@pytest.mark.parametrize(
-    "W, expected",
-    [
-        (
-            spsparse.csr_matrix(
-                np.array([[0.0, 1.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 0.0]])
-            ),
-            np.array([2.0, 2.0, 1.0]),
-        ),
-        (
-            spsparse.csr_matrix(
-                np.array(
-                    [
-                        [0.0, 1.0, 0.0, 0.0, 0.0],
-                        [0.1, 0.0, 1.0, 0.0, 0.0],
-                        [0.0, 1.0, 0.0, 1.0, 0.0],
-                        [0.0, 0.0, 1.0, 0.0, 1.0],
-                        [0.0, 0.0, 0.0, 0.5, 0.0],
-                    ]
-                )
-            ),
-            np.array([1.0, 1.1, 2.0, 2.0, 0.5]),
-        ),
-    ],
-)
-def test_get_node_degrees(W, expected):
-    output = PoissonSolver.get_node_degrees(W)
     npt.assert_allclose(expected, output)

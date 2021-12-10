@@ -4,7 +4,7 @@ import scipy.sparse as spsparse
 import pytest
 import numpy.testing as npt
 
-from poissonlearning import (
+from poissonlearning.objective_functions import (
     objective_p_laplace,
     objective_p_laplace_gradient,
     objective_weighted_mean,
