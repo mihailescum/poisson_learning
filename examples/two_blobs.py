@@ -10,8 +10,8 @@ import plotting
 np.random.seed(1)
 
 n = 1000
-X_labeled = np.array([[-1.0, -1.0], [1.0, 1.0]])
-Y_labeled = np.array([0, 1])
+X_labeled = np.array([[-1.0, -1.0], [-1.1, -0.9], [-1.0, -1.1], [1.0, 1.0]])
+Y_labeled = np.array([0, 0, 0, 1])
 X1 = np.random.uniform(
     low=[-1.8, -1.8], high=[0.2, 0.2], size=((n - X_labeled.shape[0]) // 2, 2)
 )
@@ -22,10 +22,11 @@ X = np.concatenate([X_labeled, X1, X2])
 y = Y_labeled
 
 dist = pl.distance_matrix(X)
-eps = 0.1  # 10 * (np.log(n) / np.sqrt(n)) ** d
+eps = 0.5  # 10 * (np.log(n) / np.sqrt(n)) ** d
 print("eps:", eps)
 
-W = pl.kernel_exponential(dist, eps, d=2, cutoff=1e-4)
+# W = pl.kernel_exponential(dist, eps, d=2, cutoff=1e-4)
+W = pl.kernel_indicator(dist, eps, d=2, radius=0.1)
 
 fig, ax = plt.subplots(2, 1)
 ax[0].plot(pl.node_degrees(W))
@@ -37,7 +38,9 @@ fig.colorbar(im, cax=cax, orientation="vertical")
 
 plt.show()
 
-solver = pl.PoissonSolver(eps=eps, p=2, method="minimizer", maxiter=1000, disp=True)
+solver = pl.PoissonSolver(
+    eps=eps, p=2, method="minimizer", stepsize=3, maxiter=1000, disp=True
+)
 solver.fit(W, y)
 output = solver._output[:, 0]
 

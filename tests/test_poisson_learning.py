@@ -55,6 +55,22 @@ def test_rhs_dirac_delta(W, encoded_labels, solver, expected):
     "u0, W, b, p, expected",
     [
         (
+            None,
+            spsparse.csr_matrix(
+                np.array(
+                    [
+                        [0.0, 1.0, 0.0, 0.0],
+                        [1.0, 0.0, 1.0, 0.0],
+                        [0.0, 1.0, 0.0, 1.0],
+                        [0.0, 0.0, 1.0, 0.0],
+                    ]
+                )
+            ),
+            np.array([1.0, 0.0, 0.0, -1.0]),
+            2,
+            np.array([1.5, 0.5, -0.5, -1.5]),
+        ),
+        (
             np.array([0.0, 0.0, 0.0, 0.0]),
             spsparse.csr_matrix(
                 np.array(

@@ -77,11 +77,15 @@ class PoissonSolver:
         """
         self.eps = eps
         self.p = p
+        if p <= 1:
+            raise ValueError("`p` has to be strictly larger than 1.")
 
         self.rescale_minimizer = rescale_minimizer
         self.method = method
         if method == "iterative" and p != 2:
-            raise ValueError("For iterative scheme `p` has to equal 2!")
+            raise ValueError("For iterative scheme `p` has to equal 2.")
+
+        self.stepsize = stepsize
 
         self.rhs_method = rhs
         self.tol = tol
@@ -106,12 +110,13 @@ class PoissonSolver:
             if n_classes == 2 and c == 1:
                 result = -self._output[:, 0]
             else:
+                b = f[:, c]
                 if self.method == "minimizer":
-                    result = self._solve_using_minimizer(u0=f[:, c], W=W, b=f[:, c],)
+                    result = self._solve_using_minimizer(W=W, b=b)
                 elif self.method == "iterative":
-                    result = self._solve_using_iteration(W=W, b=f[:, c])
+                    result = self._solve_using_iteration(W=W, b=b)
                 elif self.method == "homotopy":
-                    raise NotImplementedError()
+                    result = self._solve_using_homotopy(W=W, b=b)
                 else:
                     raise ValueError(f"Method '{self.method}' not understood.")
 
@@ -137,14 +142,35 @@ class PoissonSolver:
         rhs[: recentered_labels.shape[0]] = recentered_labels
         return rhs
 
-    def _solve_using_minimizer(self, u0, W, b):
+    def _solve_using_homotopy(self, W, b):
+        u0 = self._solve_using_iteration(W, b)
+
+        if self.p < 2:
+            u0 = self._solve_using_minimizer(W, b, u0=u0)
+        else:
+            p_current = 2
+            while p_current < self.p:
+                p_current = min(p_current + self.stepsize, self.p)
+                u0 = self._solve_using_minimizer(W, b, u0=u0, p=p_current)
+
+                if self.disp:
+                    print(f"Finished homotopy iteration with p={p_current}")
+
+        return u0
+
+    def _solve_using_minimizer(self, W, b, u0=None, p=None):
+        if u0 is None:
+            u0 = np.zeros(b.size)
+        if p is None:
+            p = self.p
+
         D = node_degrees(W)
         W = W - spsparse.diags(W.diagonal())
 
         result = spoptimize.minimize(
             objective_p_laplace,
             u0,
-            args=(W, b, self.p),
+            args=(W, b, p),
             jac=objective_p_laplace_gradient,
             constraints=(
                 {

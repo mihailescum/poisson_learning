@@ -23,3 +23,13 @@ def kernel_exponential(a, eps=1.0, d=1, cutoff=None):
     result = spsparse.csr_matrix(result)
 
     return result
+
+
+def kernel_indicator(a, eps=1.0, d=1, radius=1.0):
+    result = a.copy()
+    result[result >= radius * eps] = 0.0
+    result[result > 1e-10] = 1.0
+    np.fill_diagonal(result, 1.0)  # inplace operation
+    result = (eps ** -d) * spsparse.csr_matrix(result)
+
+    return result
