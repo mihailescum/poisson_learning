@@ -24,4 +24,4 @@ def generate(center1, r1, center2, r2, size):
 if __name__ == "__main__":
     data = generate([0.95, 0], 1, [-0.95, 0], 1, 1000000)
     labels = np.where(data[:, 0] > 0, 1, 0)
-    gl.datasets.save(data, labels, "two_circles")
+    gl.datasets.save(data, labels, "two_circles", overwrite=True)

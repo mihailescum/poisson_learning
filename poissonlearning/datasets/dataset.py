@@ -9,7 +9,7 @@ class Dataset:
     labels: np.ndarray
     metric: str
 
-    def load(dataset, metric="raw"):
+    def load(dataset, metric="raw", cutoff=None):
         data, labels = gl.datasets.load(dataset, metric)
-        result = Dataset(data, labels, metric)
+        result = Dataset(data[:cutoff], labels[:cutoff], metric)
         return result

@@ -7,38 +7,80 @@ import matplotlib.tri as mtri
 import poissonlearning as pl
 import graphlearning as gl
 
+from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-def plot_graph_function_with_triangulation(x, y, z, dist, max_dist):
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
+NUM_TRAINING_POINTS = 2000
+NUM_PLOTTING_POINTS = 10000
+if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
+    NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
 
-    t = mtri.Triangulation(x, y)
-    xind, yind, zind = t.triangles.T
-    xy = dist[xind, yind] ** 2
-    xz = dist[xind, zind] ** 2
-    yz = dist[yind, zind] ** 2
-    mask = np.any(np.vstack([xy, xz, yz]).T > max_dist, axis=1)
-    t.set_mask(mask)
-
-    ax.plot_trisurf(t, z, cmap="viridis")
-    plt.show()
+dataset = pl.datasets.Dataset.load("two_circles", "raw", NUM_TRAINING_POINTS)
+n, d = dataset.data.shape
 
 
-cutoff = 1000000
-dataset = pl.datasets.Dataset.load("two_circles", "raw")
-W = gl.weightmatrix.knn(dataset.data[:cutoff], k=5, symmetrize=True)
+def estimate_epsilon(data, d):
+    min = data.min(axis=0)
+    max = data.max(axis=0)
+    volume = np.prod(np.abs(max - min))
 
-train_ind = gl.trainsets.generate(dataset.labels[:cutoff], rate=1)
+    n = data.shape[0]
+    if d == 2:
+        conn_radius = np.log(n) ** (3 / 4) / np.sqrt(n)
+    elif d >= 3:
+        conn_radius = (np.log(n) / n) ** (1 / d)
+    else:
+        raise ValueError("Dimension not supported")
+
+    epsilon = 0.7 * np.log(n) ** (1 / 8) * conn_radius
+
+    return epsilon
+
+
+W = gl.weightmatrix.knn(dataset.data, k=5, symmetrize=True)
+print(W.count_nonzero())
+epsilon = estimate_epsilon(dataset.data, d=d)
+print(epsilon)
+W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, kernel="gaussian")
+print(W.count_nonzero())
+
+# train_ind = gl.trainsets.generate(dataset.labels, rate=1)
+train_ind = np.array([345, 718])
 train_labels = dataset.labels[train_ind]
 
-poisson_dirac = gl.ssl.poisson(W, p=1, solver="conjugate_gradient")
-solution = poisson_dirac.fit(train_ind, train_labels)
+plot_labels = np.full(shape=NUM_PLOTTING_POINTS, fill_value=-1)
+plot_labels[train_ind] = train_labels
+# plot_data_with_labels(dataset.data[:NUM_PLOTTING_POINTS], plot_labels)
+# plt.show()
 
-dist = cdist(dataset.data[:cutoff], dataset.data[:cutoff], metric="euclidean")
-plot_graph_function_with_triangulation(
-    dataset.data[:cutoff, 0],
-    dataset.data[:cutoff, 1],
-    solution[:, 0],
-    dist=dist,
-    max_dist=0.01,
+bump_width = 3e-2
+rhs = None  # pl.algorithms.rhs.bump(dataset.data, train_ind, train_labels, bump_width=bump_width)
+p = 2
+poisson_dirac = pl.algorithms.Poisson(
+    W,
+    p=(p - 1),
+    solver="conjugate_gradient",
+    normalization="combinatorial",
+    spectral_cutoff=100,
+    tol=1e-3,
+    max_iter=1e6,
+    rhs=rhs,
 )
+solution = poisson_dirac.fit(train_ind, train_labels)
+# Normalize solution
+mu = n * epsilon ** (p + d)
+solution = mu ** (1 / p - 1) * solution
+
+dist = cdist(
+    dataset.data[:NUM_PLOTTING_POINTS],
+    dataset.data[:NUM_PLOTTING_POINTS],
+    metric="euclidean",
+)
+fig, ax = plot_graph_function_with_triangulation(
+    dataset.data[:NUM_PLOTTING_POINTS],
+    solution[:NUM_PLOTTING_POINTS, 0],
+    dist=dist,
+    max_dist=0.1,
+)
+# fig.suptitle(f"n: {n}; eps: {epsilon}; RHS: Bump with width {bump_width}")
+fig.suptitle(f"n: {n}; eps: {epsilon}; RHS: Dirac")
+plt.show()
