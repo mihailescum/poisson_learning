@@ -18,10 +18,7 @@ def _exp_bump(x):
     return result
 
 
-def bump(data, train_ind, train_labels, train_label_density=None, bump_width=1.0):
-    if train_label_density is None:
-        train_label_density = np.ones(train_ind.size)
-
+def bump(data, train_ind, train_labels, bump_width=1.0):
     n, d = data.shape
     onehot = gl.utils.labels_to_onehot(train_labels)
     label_weights = onehot - np.mean(onehot, axis=0)
@@ -29,10 +26,16 @@ def bump(data, train_ind, train_labels, train_label_density=None, bump_width=1.0
 
     dist_to_labels = cdist(data[train_ind], data)
     bumps = _exp_bump(dist_to_labels / bump_width).T
-    bumps *= (bump_width ** (-d)) / n
+    bumps /= (bump_width ** (-d)) / n
+
+    # Normalize the bumps to one.
+    # Asymptotically, the sum will converge to $\rho(x_j)$,
+    # where x_j is the j-th labeled node. This has to be divided
+    # out for asymptotic consistency.
+    bumps /= bumps.sum(axis=0)
 
     source = np.zeros((n, num_labels))
     for i in range(num_labels):
-        source[:, i] = (bumps * label_weights[i] * (1 / train_label_density)).sum(axis=1)
+        source[:, i] = (bumps * label_weights[i]).sum(axis=1)
 
     return source
