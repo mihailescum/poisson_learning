@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+from scipy.sparse import spdiags
 
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
@@ -9,7 +10,7 @@ import graphlearning as gl
 
 from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-NUM_TRAINING_POINTS = 5000
+NUM_TRAINING_POINTS = 40000
 NUM_PLOTTING_POINTS = 10000
 if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
@@ -19,6 +20,7 @@ dataset = pl.datasets.Dataset.load("two_circles", "raw", NUM_TRAINING_POINTS)
 n, d = dataset.data.shape
 
 train_ind = np.array([345, 718])
+# train_ind = np.array([345, 301])
 train_labels = dataset.labels[train_ind]
 
 
@@ -76,8 +78,9 @@ solution = poisson_dirac.fit(train_ind, train_labels)
 mu = n * epsilon ** (p + d)
 solution = mu ** (1 / p - 1) * solution
 
-D = gl.graph(W).degree_vector()
-print(f"Mean of solution: {solution[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
+D = gl.graph(W - spdiags(W.diagonal(), 0, n, n)).degree_vector()
+print(f"Mean of solution: {np.mean(solution, axis=0)}")
+print(f"Weighted mean of solution: {np.dot(D, solution)}")
 
 # Plot the solution
 dist = cdist(

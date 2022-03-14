@@ -216,4 +216,9 @@ class Poisson(gl.ssl.ssl):
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
 
+        # Normalize for zero weighted mean
+        D = G.degree_vector()
+        shift = np.dot(D, u) / np.sum(D)
+        u = u - shift
+
         return u
