@@ -9,7 +9,7 @@ import graphlearning as gl
 
 from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-NUM_TRAINING_POINTS = 5000
+NUM_TRAINING_POINTS = 20000
 NUM_PLOTTING_POINTS = 10000
 if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
@@ -45,7 +45,7 @@ def estimate_epsilon(data, d):
 # W = gl.weightmatrix.knn(dataset.data, k=5, symmetrize=True)
 # print(W.count_nonzero())
 epsilon = estimate_epsilon(dataset.data, d=d)
-print(epsilon)
+print(f"Epsilon: {epsilon}")
 W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, kernel="gaussian")
 # print(W.count_nonzero())
 
