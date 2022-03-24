@@ -9,7 +9,7 @@ import graphlearning as gl
 
 from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-NUM_TRAINING_POINTS = 20000
+NUM_TRAINING_POINTS = 500000
 NUM_PLOTTING_POINTS = 10000
 if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
@@ -62,7 +62,7 @@ p = 2
 poisson_dirac = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n ** 2 * epsilon ** (p + d),
+    scale=n ** 2 * epsilon ** p,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
@@ -73,14 +73,14 @@ poisson_dirac = pl.algorithms.Poisson(
 solution_dirac = poisson_dirac.fit(train_ind, train_labels)
 
 # Solve the poisson problem with bump RHS
-bump_width = 3e-2
+bump_width = 1e-1
 rhs_bump = pl.algorithms.rhs.bump(
     dataset.data, train_ind, train_labels, bump_width=bump_width
 )
 poisson_bump = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n ** 2 * epsilon ** (p + d),
+    scale=n ** 2 * epsilon ** p,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
@@ -88,7 +88,8 @@ poisson_bump = pl.algorithms.Poisson(
     max_iter=1e6,
     rhs=rhs_bump,
 )
-solution_bump = poisson_bump.fit(train_ind, train_labels)
+# solution_bump = poisson_bump.fit(train_ind, train_labels)
+solution_bump = np.zeros_like(solution_dirac)
 
 D = gl.graph(W).degree_vector()
 print(f"Mean of solution: {solution_dirac[:,0].mean()}")  # np.dot(solution[:, 0], D)}")

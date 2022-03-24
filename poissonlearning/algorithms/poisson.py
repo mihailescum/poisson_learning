@@ -6,6 +6,7 @@ import sys
 
 import numpy as np
 from scipy import sparse
+from scipy.sparse.linalg import cg as spcg
 
 import graphlearning as gl
 
@@ -143,6 +144,11 @@ class Poisson(gl.ssl.ssl):
             L = G.laplacian(normalization=self.normalization)
             if self.normalization == "combinatorial":
                 u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
+                # u = np.empty_like(source, dtype="float64")
+                # for i in range(u.shape[1]):
+                #    u[:, i], _ = spcg(
+                #        L, source[:, i], tol=self.tol, maxiter=self.max_iter
+                #    )
             elif self.normalization == "normalized":
                 D = G.degree_matrix(p=-0.5)
                 u = gl.utils.conjgrad(
