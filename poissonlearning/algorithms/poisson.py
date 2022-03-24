@@ -15,6 +15,7 @@ class Poisson(gl.ssl.ssl):
         self,
         W=None,
         rhs=None,
+        scale=None,
         class_priors=None,
         solver="conjugate_gradient",
         p=1,
@@ -40,6 +41,8 @@ class Poisson(gl.ssl.ssl):
         W : numpy array, scipy sparse matrix, or graphlearning graph object (optional), default=None
             Weight matrix representing the graph.
         rhs : numpy array (optional), default=None
+            (fill with details)
+        scale: float (optional), default=None
             (fill with details)
         class_priors : numpy array (optional), default=None
             Class priors (fraction of data belonging to each class). If provided, the predict function
@@ -89,6 +92,7 @@ class Poisson(gl.ssl.ssl):
         """
         super().__init__(W, class_priors)
         self.rhs = rhs
+        self.scale = scale
 
         if solver not in ["conjugate_gradient", "spectral", "gradient_descent"]:
             sys.exit("Invalid Poisson solver")
@@ -141,7 +145,9 @@ class Poisson(gl.ssl.ssl):
                 u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
             elif self.normalization == "normalized":
                 D = G.degree_matrix(p=-0.5)
-                u = gl.utils.conjgrad(L, D * source, tol=self.tol, max_iter=self.max_iter)
+                u = gl.utils.conjgrad(
+                    L, D * source, tol=self.tol, max_iter=self.max_iter
+                )
                 u = D * u
             else:
                 raise ValueError(
@@ -209,11 +215,15 @@ class Poisson(gl.ssl.ssl):
             V = vecs[:, 1:]
             vals = vals[1:]
             if self.p != 1:
-                vals = vals**self.p
+                vals = vals ** self.p
             L = sparse.spdiags(1 / vals, 0, self.spectral_cutoff, self.spectral_cutoff)
             u = V @ (L @ (V.T @ source))
 
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
+
+        # Scale solution
+        if self.scale is not None:
+            u = self.scale ** (1 / self.p - 1) * u
 
         return u

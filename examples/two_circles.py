@@ -52,32 +52,46 @@ W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, kernel="gaussian")
 # Plot raw data
 plot_labels = np.full(shape=NUM_PLOTTING_POINTS, fill_value=-1)
 plot_labels[train_ind] = train_labels
-# plot_data_with_labels(dataset.data[:NUM_PLOTTING_POINTS], plot_labels)
+# _, ax = plt.subplots()
+# plot_data_with_labels(ax, dataset.data[:NUM_PLOTTING_POINTS], plot_labels)
 # plt.show()
 
-# Build RHS of the poisson equation
-bump_width = 3e-2
-rhs = None  # pl.algorithms.rhs.bump(dataset.data, train_ind, train_labels, bump_width=bump_width)
 
-# Solve the poisson problem
 p = 2
+# Solve the poisson problem with dirac RHS
 poisson_dirac = pl.algorithms.Poisson(
     W,
     p=(p - 1),
+    scale=n ** 2 * epsilon ** (p + d),
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
     tol=1e-3,
     max_iter=1e6,
-    rhs=rhs,
+    rhs=None,
 )
-solution = poisson_dirac.fit(train_ind, train_labels)
-# Normalize solution
-mu = n * epsilon ** (p + d)
-solution = mu ** (1 / p - 1) * solution
+solution_dirac = poisson_dirac.fit(train_ind, train_labels)
+
+# Solve the poisson problem with bump RHS
+bump_width = 3e-2
+rhs_bump = pl.algorithms.rhs.bump(
+    dataset.data, train_ind, train_labels, bump_width=bump_width
+)
+poisson_bump = pl.algorithms.Poisson(
+    W,
+    p=(p - 1),
+    scale=n ** 2 * epsilon ** (p + d),
+    solver="conjugate_gradient",
+    normalization="combinatorial",
+    spectral_cutoff=150,
+    tol=1e-3,
+    max_iter=1e6,
+    rhs=rhs_bump,
+)
+solution_bump = poisson_bump.fit(train_ind, train_labels)
 
 D = gl.graph(W).degree_vector()
-print(f"Mean of solution: {solution[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
+print(f"Mean of solution: {solution_dirac[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
 
 # Plot the solution
 dist = cdist(
@@ -85,15 +99,25 @@ dist = cdist(
     dataset.data[:NUM_PLOTTING_POINTS],
     metric="euclidean",
 )
-fig, ax = plot_graph_function_with_triangulation(
+fig = plt.figure()
+ax_dirac = fig.add_subplot(1, 2, 1, projection="3d")
+plot_graph_function_with_triangulation(
+    ax_dirac,
     dataset.data[:NUM_PLOTTING_POINTS],
-    solution[:NUM_PLOTTING_POINTS, 0],
+    solution_dirac[:NUM_PLOTTING_POINTS, 0],
     dist=dist,
     max_dist=0.1,
 )
-if rhs is not None:
-    fig.suptitle(f"n: {n}; eps: {epsilon}; RHS: Bump with width {bump_width}")
-else:
-    fig.suptitle(f"n: {n}; eps: {epsilon}; RHS: Dirac")
+ax_dirac.set_title(f"n: {n}; eps: {epsilon:.4f}; RHS: Dirac")
+
+ax_bump = fig.add_subplot(1, 2, 2, projection="3d")
+plot_graph_function_with_triangulation(
+    ax_bump,
+    dataset.data[:NUM_PLOTTING_POINTS],
+    solution_bump[:NUM_PLOTTING_POINTS, 0],
+    dist=dist,
+    max_dist=0.1,
+)
+ax_bump.set_title(f"n: {n}; eps: {epsilon:.4f}; RHS: Bump with width {bump_width}")
 
 plt.show()

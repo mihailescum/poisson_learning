@@ -4,9 +4,7 @@ import matplotlib.tri as mtri
 import numpy as np
 
 
-def plot_graph_function_with_triangulation(data, z, dist, max_dist):
-    fig = plt.figure()
-    ax = plt.axes(projection="3d")
+def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
     ax.view_init(elev=10, azim=-90)
 
     t = mtri.Triangulation(data[:, 0], data[:, 1])
@@ -18,16 +16,10 @@ def plot_graph_function_with_triangulation(data, z, dist, max_dist):
     t.set_mask(mask)
 
     ax.plot_trisurf(t, z, cmap="viridis")
-    return fig, ax
 
 
-def plot_data_with_labels(data, labels):
-    fig, ax = plt.subplots()
+def plot_data_with_labels(ax, data, labels):
     ax.scatter(data[labels == -1, 0], data[labels == -1, 1], c="grey", s=1)
     ax.scatter(
-        data[labels >= 0, 0],
-        data[labels >= 0, 1],
-        c=labels[labels >= 0],
-        cmap="Set3",
+        data[labels >= 0, 0], data[labels >= 0, 1], c=labels[labels >= 0], cmap="Set3",
     )
-    return fig, ax
