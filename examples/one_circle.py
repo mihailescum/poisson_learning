@@ -15,7 +15,7 @@ if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
 
 # Load the two_circles dataset
-dataset = pl.datasets.Dataset.load("two_circles", "raw", NUM_TRAINING_POINTS)
+dataset = pl.datasets.Dataset.load("one_circle", "raw", NUM_TRAINING_POINTS)
 n, d = dataset.data.shape
 
 train_ind = np.array([0, 1])
