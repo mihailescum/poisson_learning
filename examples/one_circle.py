@@ -9,7 +9,7 @@ import graphlearning as gl
 
 from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-NUM_TRAINING_POINTS = 20000
+NUM_TRAINING_POINTS = 50000
 NUM_PLOTTING_POINTS = 10000
 if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
@@ -72,24 +72,20 @@ poisson_dirac = pl.algorithms.Poisson(
 )
 solution_dirac = poisson_dirac.fit(train_ind, train_labels)
 
-# Solve the poisson problem with bump RHS
-bump_width = 1e-1
-rhs_bump = pl.algorithms.rhs.bump(
-    dataset.data, train_ind, train_labels, bump_width=bump_width
+# Compute the analytic continuum limit
+green_first_label = pl.datasets.one_circle.fundamental_solution(
+    x=dataset.data, z=dataset.data[train_ind[0]], r=1,
 )
-poisson_bump = pl.algorithms.Poisson(
-    W,
-    p=(p - 1),
-    scale=n ** 2 * epsilon ** p,
-    solver="conjugate_gradient",
-    normalization="combinatorial",
-    spectral_cutoff=150,
-    tol=1e-3,
-    max_iter=1e6,
-    rhs=rhs_bump,
+green_second_label = pl.datasets.one_circle.fundamental_solution(
+    x=dataset.data, z=dataset.data[train_ind[1]], r=1,
 )
-solution_bump = poisson_bump.fit(train_ind, train_labels)
-# solution_bump = np.zeros_like(solution_dirac)
+solution_analytic = 0.5 * green_first_label - 0.5 * green_second_label
+solution_analytic[np.isposinf(solution_analytic)] = np.max(
+    solution_analytic[~np.isposinf(solution_analytic)]
+)
+solution_analytic[np.isneginf(solution_analytic)] = np.min(
+    solution_analytic[~np.isneginf(solution_analytic)]
+)
 
 D = gl.graph(W).degree_vector()
 print(f"Mean of solution: {solution_dirac[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
@@ -115,10 +111,10 @@ ax_bump = fig.add_subplot(1, 2, 2, projection="3d")
 plot_graph_function_with_triangulation(
     ax_bump,
     dataset.data[:NUM_PLOTTING_POINTS],
-    solution_bump[:NUM_PLOTTING_POINTS, 0],
+    solution_analytic[:NUM_PLOTTING_POINTS],
     dist=dist,
     max_dist=0.1,
 )
-ax_bump.set_title(f"n: {n}; eps: {epsilon:.4f}; RHS: Bump with width {bump_width}")
+ax_bump.set_title(f"eps: {epsilon:.4f}; Analytic solution to continuum problem")
 
 plt.show()
