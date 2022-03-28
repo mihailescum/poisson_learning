@@ -9,7 +9,7 @@ import graphlearning as gl
 
 from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-NUM_TRAINING_POINTS = 50000
+NUM_TRAINING_POINTS = 200000
 NUM_PLOTTING_POINTS = 10000
 if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
@@ -59,36 +59,38 @@ plot_labels[train_ind] = train_labels
 
 p = 2
 # Solve the poisson problem with dirac RHS
+bump_width = 1e-2
+rhs_bump = pl.algorithms.rhs.bump(
+    dataset.data, train_ind, train_labels, bump_width=bump_width
+)
 poisson_dirac = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n ** 2 * epsilon ** p,
+    scale=0.5 * n * epsilon ** p,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
     tol=1e-3,
     max_iter=1e6,
-    rhs=None,
+    rhs=rhs_bump,
 )
 solution_dirac = poisson_dirac.fit(train_ind, train_labels)
 
-# Compute the analytic continuum limit
-green_first_label = pl.datasets.one_circle.fundamental_solution(
-    x=dataset.data, z=dataset.data[train_ind[0]], r=1,
-)
-green_second_label = pl.datasets.one_circle.fundamental_solution(
-    x=dataset.data, z=dataset.data[train_ind[1]], r=1,
-)
-solution_analytic = 0.5 * green_first_label - 0.5 * green_second_label
-solution_analytic[np.isposinf(solution_analytic)] = np.max(
-    solution_analytic[~np.isposinf(solution_analytic)]
-)
-solution_analytic[np.isneginf(solution_analytic)] = np.min(
-    solution_analytic[~np.isneginf(solution_analytic)]
-)
-
 D = gl.graph(W).degree_vector()
 print(f"Mean of solution: {solution_dirac[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
+
+# Remove values at the labels for plotting
+solution_dirac[train_ind, 0] = np.where(train_labels == 0, np.inf, -np.inf)
+solution_dirac[train_ind, 1] = np.where(train_labels == 0, -np.inf, np.inf)
+
+# Compute the analytic continuum limit
+green_first_label = pl.datasets.one_circle.greens_function(
+    x=dataset.data, z=dataset.data[train_ind[0]],
+)
+green_second_label = pl.datasets.one_circle.greens_function(
+    x=dataset.data, z=dataset.data[train_ind[1]],
+)
+solution_analytic = 0.5 * green_first_label - 0.5 * green_second_label
 
 # Plot the solution
 dist = cdist(
@@ -111,10 +113,15 @@ ax_bump = fig.add_subplot(1, 2, 2, projection="3d")
 plot_graph_function_with_triangulation(
     ax_bump,
     dataset.data[:NUM_PLOTTING_POINTS],
-    solution_analytic[:NUM_PLOTTING_POINTS],
+    np.abs(
+        solution_analytic[:NUM_PLOTTING_POINTS]
+        - solution_dirac[:NUM_PLOTTING_POINTS, 0]
+    ),
     dist=dist,
     max_dist=0.1,
 )
 ax_bump.set_title(f"eps: {epsilon:.4f}; Analytic solution to continuum problem")
+
+print(f"L1 error: {np.nanmean(np.abs(solution_analytic - solution_dirac[:, 0]))}")
 
 plt.show()

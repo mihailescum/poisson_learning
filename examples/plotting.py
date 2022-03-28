@@ -15,7 +15,15 @@ def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
     mask = np.any(np.vstack([xy, xz, yz]).T > max_dist, axis=1)
     t.set_mask(mask)
 
-    ax.plot_trisurf(t, z, cmap="viridis")
+    # Remove values where `z` is infinity for plotting purposes
+    z_masked_infty = z.copy()
+    z_masked_infty[np.isposinf(z)] = np.max(z[~np.isposinf(z)])
+    z_masked_infty[np.isneginf(z)] = np.min(z[~np.isneginf(z)])
+
+    # TODO: remove
+    z_masked_infty[np.isnan(z_masked_infty)] = 0.0
+
+    ax.plot_trisurf(t, z_masked_infty, cmap="viridis")
 
 
 def plot_data_with_labels(ax, data, labels):

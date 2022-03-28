@@ -230,6 +230,6 @@ class Poisson(gl.ssl.ssl):
 
         # Scale solution
         if self.scale is not None:
-            u = self.scale ** (1 / self.p - 1) * u
+            u = self.scale ** (1 / self.p) * u
 
         return u
