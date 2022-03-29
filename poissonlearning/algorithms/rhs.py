@@ -6,7 +6,7 @@ import graphlearning as gl
 
 def _exp_bump(x):
     if isinstance(x, float):
-        result = np.exp(-1 / (1 - x**2)) if np.abs(x) < 1 else 0
+        result = np.exp(-1 / (1 - x ** 2)) if np.abs(x) < 1 else 0
     elif isinstance(x, np.ndarray):
         result = np.zeros_like(x)
         result[np.abs(x) < 1] = np.exp(-1 / (1 - x[np.abs(x) < 1] ** 2))
@@ -26,7 +26,7 @@ def bump(data, train_ind, train_labels, bump_width=1.0):
 
     dist_to_labels = cdist(data[train_ind], data)
     bumps = _exp_bump(dist_to_labels / bump_width).T
-    bumps /= (bump_width ** (-d)) / n
+    bumps *= bump_width ** (-d)
 
     # Normalize the bumps to one.
     # Asymptotically, the sum will converge to $\rho(x_j)$,

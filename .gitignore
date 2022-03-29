@@ -1,3 +1,5 @@
 .vscode
 **cache**
 *.egg-info
+/knn_data
+/data/

@@ -18,6 +18,11 @@ def generate(center1, r1, center2, r2, size):
     x = radii * np.sin(degrees)
     y = radii * np.cos(degrees)
     result = center + np.vstack([x, y]).T
+
+    # Add two label points at the beginning of the data set
+    result[0] = center1
+    result[1] = center2
+
     return result
 
 

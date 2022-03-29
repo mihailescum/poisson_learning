@@ -6,6 +6,7 @@ import sys
 
 import numpy as np
 from scipy import sparse
+from scipy.sparse.linalg import cg as spcg
 
 import graphlearning as gl
 
@@ -15,6 +16,7 @@ class Poisson(gl.ssl.ssl):
         self,
         W=None,
         rhs=None,
+        scale=None,
         class_priors=None,
         solver="conjugate_gradient",
         p=1,
@@ -40,6 +42,8 @@ class Poisson(gl.ssl.ssl):
         W : numpy array, scipy sparse matrix, or graphlearning graph object (optional), default=None
             Weight matrix representing the graph.
         rhs : numpy array (optional), default=None
+            (fill with details)
+        scale: float (optional), default=None
             (fill with details)
         class_priors : numpy array (optional), default=None
             Class priors (fraction of data belonging to each class). If provided, the predict function
@@ -89,6 +93,7 @@ class Poisson(gl.ssl.ssl):
         """
         super().__init__(W, class_priors)
         self.rhs = rhs
+        self.scale = scale
 
         if solver not in ["conjugate_gradient", "spectral", "gradient_descent"]:
             sys.exit("Invalid Poisson solver")
@@ -139,6 +144,11 @@ class Poisson(gl.ssl.ssl):
             L = G.laplacian(normalization=self.normalization)
             if self.normalization == "combinatorial":
                 u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
+                # u = np.empty_like(source, dtype="float64")
+                # for i in range(u.shape[1]):
+                #    u[:, i], _ = spcg(
+                #        L, source[:, i], tol=self.tol, maxiter=self.max_iter
+                #    )
             elif self.normalization == "normalized":
                 D = G.degree_matrix(p=-0.5)
                 u = gl.utils.conjgrad(L, D * source, tol=self.tol, max_iter=self.max_iter)
@@ -220,5 +230,9 @@ class Poisson(gl.ssl.ssl):
         D = G.degree_vector()
         shift = np.dot(D, u) / np.sum(D)
         u = u - shift
+
+        # Scale solution
+        if self.scale is not None:
+            u = self.scale ** (1 / self.p - 1) * u
 
         return u
