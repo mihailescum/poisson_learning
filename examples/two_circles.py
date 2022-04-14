@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.distance import cdist
+from scipy.sparse import spdiags
 
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
@@ -62,7 +63,7 @@ p = 2
 poisson_dirac = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n ** 2 * epsilon ** p,
+    scale=n**2 * epsilon**p,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
@@ -74,13 +75,11 @@ solution_dirac = poisson_dirac.fit(train_ind, train_labels)
 
 # Solve the poisson problem with bump RHS
 bump_width = 1e-1
-rhs_bump = pl.algorithms.rhs.bump(
-    dataset.data, train_ind, train_labels, bump_width=bump_width
-)
+rhs_bump = pl.algorithms.rhs.bump(dataset.data, train_ind, train_labels, bump_width=bump_width)
 poisson_bump = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n ** 2 * epsilon ** p,
+    scale=n**2 * epsilon**p,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
@@ -91,8 +90,9 @@ poisson_bump = pl.algorithms.Poisson(
 solution_bump = poisson_bump.fit(train_ind, train_labels)
 # solution_bump = np.zeros_like(solution_dirac)
 
-D = gl.graph(W).degree_vector()
-print(f"Mean of solution: {solution_dirac[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
+D = gl.graph(W - spdiags(W.diagonal(), 0, n, n)).degree_vector()
+print(f"Mean of solution: {np.mean(solution_dirac, axis=0)}")
+print(f"Weighted mean of solution: {np.dot(D, solution_dirac)}")
 
 # Plot the solution
 dist = cdist(

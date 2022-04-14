@@ -151,9 +151,7 @@ class Poisson(gl.ssl.ssl):
                 #    )
             elif self.normalization == "normalized":
                 D = G.degree_matrix(p=-0.5)
-                u = gl.utils.conjgrad(
-                    L, D * source, tol=self.tol, max_iter=self.max_iter
-                )
+                u = gl.utils.conjgrad(L, D * source, tol=self.tol, max_iter=self.max_iter)
                 u = D * u
             else:
                 raise ValueError(
@@ -221,12 +219,17 @@ class Poisson(gl.ssl.ssl):
             V = vecs[:, 1:]
             vals = vals[1:]
             if self.p != 1:
-                vals = vals ** self.p
+                vals = vals**self.p
             L = sparse.spdiags(1 / vals, 0, self.spectral_cutoff, self.spectral_cutoff)
             u = V @ (L @ (V.T @ source))
 
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
+
+        # Normalize for zero weighted mean
+        D = G.degree_vector()
+        shift = np.dot(D, u) / np.sum(D)
+        u = u - shift
 
         # Scale solution
         if self.scale is not None:
