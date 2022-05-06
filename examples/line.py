@@ -1,31 +1,17 @@
 import numpy as np
+import scipy.sparse
 
 import matplotlib.pyplot as plt
 
 import poissonlearning as pl
 import graphlearning as gl
 
-NUM_TRAINING_POINTS = 50000
-NUM_PLOTTING_POINTS = 100000
-if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
-    NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
+from plotting import get_photocopy_colors
 
-# Load the two_circles dataset
-dataset = pl.datasets.Dataset.load("line", "raw", NUM_TRAINING_POINTS)
-# dataset.data = np.linspace(0, 1, NUM_TRAINING_POINTS)[:, np.newaxis]
-# dataset.labels = np.zeros(NUM_TRAINING_POINTS)
-# dataset.labels[dataset.data[:, 0] > 0.5] = 1
 
-dataset.data = np.concatenate([np.array([[0.4], [0.6]]), dataset.data])
-dataset.labels = np.concatenate([np.array([0, 1]), dataset.labels])
-
-n, d = dataset.data.shape
-
-# train_ind = np.array(
-#    [(int)(NUM_TRAINING_POINTS * 0.3), (int)(NUM_TRAINING_POINTS * 0.7)]
-# )
-train_ind = np.array([0, 1])
-train_labels = dataset.labels[train_ind]
+NUM_TRAINING_POINTS = [10000]  # , 20000, 30000]
+BUMP_WIDTHS = [1e-1, 1e-2, 1e-3, "dirac"]
+NUM_PLOTTING_POINTS = 10000
 
 
 def estimate_epsilon(data):
@@ -34,91 +20,64 @@ def estimate_epsilon(data):
     volume = np.prod(np.abs(max - min))
 
     n = data.shape[0]
-    epsilon = 2 * np.log(n) / n
+    epsilon = 10 * np.log(n) / n
 
     return epsilon
 
 
-# Build the weight matrix
-def epsilon_ball_test(data, epsilon, kernel="gaussian", eta=None):
-    """Epsilon ball weight matrix
-    ======
+results = {}
+for training_points in NUM_TRAINING_POINTS:
+    print(f"# training points: {training_points}")
+    results[training_points] = {}
 
-    General function for constructing a sparse epsilon-ball weight matrix, whose weights have the form 
-   
-    Parameters
-    ----------
-    data : (n,m) numpy array(weights, (M1, M2)), shape=(n, n)
-        n data points, each of dimension m
-    epsilon : float
-        Connectivity radius
-    kernel : string (optional), {'uniform','gaussian','singular','distance'}, default='gaussian'
-        The choice of kernel in computing the weights between \\(x_i\\) and \\(x_j\\) when
-        \\(\\|x_i-x_j\\|\\leq \\varepsilon\\). The choice 'uniform' corresponds to \\(w_{i,j}=1\\) 
-        and constitutes an unweighted graph, 'gaussian' corresponds to
-        \\[ w_{i,j} = \\exp\\left(\\frac{-4\\|x_i - x_j\\|^2}{\\varepsilon^2} \\right), \\]
-        'distance' corresponds to
-        \\[ w_{i,j} = \\|x_i - x_j\\|, \\]
-        and 'singular' corresponds to 
-        \\[ w_{i,j} = \\frac{1}{\\|x_i - x_j\\|}, \\]
-        when \\(i\\neq j\\) a(weights, (M1, M2)), shape=(n, n)nd \\(w_{i,i}=1\\).
-    eta : python function handle (optional)
-        If provided, this overrides the kernel option and instead uses the weights
-        \\[ w_{i,j} = \\eta\\left(\\frac{\\|x_i - x_j\\|^2}{\\varepsilon^2} \\right). \\]
+    dataset = pl.datasets.Dataset.load("line", "raw", training_points - 2)
 
-    Returns
-    -------
-    W : (n,n) scipy sparse matrix, float 
-        Sparse weight matrix.
-    """
-    n = data.shape[0]  # Number of points
+    dataset.data = np.concatenate([np.array([[0.5], [0.8]]), dataset.data])
+    dataset.labels = np.concatenate([np.array([0, 1]), dataset.labels])
 
-    # Rangesearch to find nearest neighbors
-    from scipy.spatial.distance import cdist
+    n, d = dataset.data.shape
 
-    weights = cdist(data, data)
-    weights[weights > epsilon] = 0.0
-    weights[weights > 0] = 1.0
-    np.fill_diagonal(weights, np.sum(weights, axis=1))
+    train_ind = np.array([0, 1])
+    train_labels = dataset.labels[train_ind]
 
-    # Construct sparse matrix and convert to Compressed Sparse Row (CSR) format
-    import scipy.sparse as sparse
+    print("Creating weight matrix...")
+    epsilon = estimate_epsilon(dataset.data)
+    print(f"Epsilon: {epsilon}")
+    W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, kernel="uniform")
+    # W = epsilon_ball_test(dataset.data, epsilon, kernel="uniform")
+    W *= epsilon ** (-d)
+    # normalization constant, integrate -1 to 1: t^p dt
+    sigma = 1 / 3
 
-    W = sparse.coo_matrix(weights)
+    print("Solving Poisson problem...")
+    p = 2
+    for bump_width in BUMP_WIDTHS:
+        print(f"Bump width: {bump_width}")
+        if isinstance(bump_width, float):
+            rhs = pl.algorithms.rhs.bump(
+                dataset.data, train_ind, train_labels, bump_width=bump_width
+            )
+        elif bump_width == "dirac":
+            rhs = None
+        else:
+            raise ValueError("Invalid bump widht, must be either float or 'dirac'.")
 
-    return W.tocsr()
+        poisson = pl.algorithms.Poisson(
+            W,
+            p=(p - 1),
+            scale=sigma * epsilon ** (p) * n ** 2,
+            eps_scale=epsilon,
+            solver="conjugate_gradient",
+            normalization="combinatorial",
+            spectral_cutoff=150,
+            tol=1e-4,
+            max_iter=1e5,
+            rhs=rhs,
+        )
+        solution = poisson.fit(train_ind, train_labels)[:, 0]
+        results[training_points][bump_width] = solution
 
-
-# W = gl.weightmatrix.knn(dataset.data, k=5, symmetrize=True)
-# print(W.count_nonzero())
-epsilon = estimate_epsilon(dataset.data)
-print(f"Epsilon: {epsilon}")
-W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, kernel="uniform")
-# W = epsilon_ball_test(dataset.data, epsilon, kernel="uniform")
-W *= epsilon ** (-d)
-# normalization constant, integrate 0 to 1: exp(-t^2/4)*t^3 dt
-sigma = 1 / 3  # 8 - 10 * (np.e ** -(1 / 4))
-# print(W.count_nonzero())
-
-
-p = 2
-# Solve the poisson problem with dirac RHS
-poisson_dirac = pl.algorithms.Poisson(
-    W,
-    p=(p - 1),
-    scale=n ** 2 * epsilon ** (p),
-    solver="conjugate_gradient",
-    normalization="combinatorial",
-    spectral_cutoff=150,
-    tol=1e-10,
-    max_iter=1e7,
-    rhs=None,
-)
-solution_dirac = poisson_dirac.fit(train_ind, train_labels)
-
-D = gl.graph(W).degree_vector()
-print(f"Mean of solution: {solution_dirac[:,0].mean()}")  # np.dot(solution[:, 0], D)}")
-
+print("Computing analytic solution...")
 # Compute the analytic continuum limit
 green_first_label = pl.datasets.line.greens_function(
     x=dataset.data, z=dataset.data[train_ind[0]],
@@ -126,29 +85,48 @@ green_first_label = pl.datasets.line.greens_function(
 green_second_label = pl.datasets.line.greens_function(
     x=dataset.data, z=dataset.data[train_ind[1]],
 )
-solution_analytic = 1 / sigma * (0.5 * green_first_label - 0.5 * green_second_label)
-print(
-    "Multiplicative offset: {}".format(
-        np.abs(solution_analytic / solution_dirac[:, 0]).mean()
-    )
-)
+solution_analytic = 0.5 * green_first_label - 0.5 * green_second_label
+results["analytic"] = solution_analytic
 
+
+print("Plotting...")
 plot_indices = np.argsort(dataset.data[:NUM_PLOTTING_POINTS, 0])
+x = dataset.data[plot_indices, 0]
 
-# Plot the solution
-fig = plt.figure()
-ax = fig.add_subplot(1, 1, 1)
-ax.plot(
-    dataset.data[plot_indices, 0], solution_dirac[plot_indices, 0], label="RHS: Dirac",
+# Convergence of dirac solutions
+colors = get_photocopy_colors(n=len(NUM_TRAINING_POINTS) + 1)
+fig_dirac, ax_dirac = plt.subplots(1, 1)
+ax_dirac.plot(
+    x, results["analytic"][plot_indices], label=f"analytic solution", c=colors[0],
 )
-ax.plot(
-    dataset.data[plot_indices, 0], solution_analytic[plot_indices], label="Analytic",
-)
-# ax_bump.set_title(f"eps: {epsilon:.4f}; Analytic solution to continuum problem")
-ax.set_title(f"n: {n}; eps: {epsilon:.4f}")  # ; RHS: Dirac")
-ax.legend()
-ax.grid()
+for i, training_points in enumerate(NUM_TRAINING_POINTS):
+    ax_dirac.plot(
+        x,
+        results[training_points]["dirac"][plot_indices],
+        label=f"n={training_points}",
+        c=colors[i + 1],
+    )
 
-print(f"L1 error: {np.nanmean(np.abs(solution_analytic - solution_dirac[:, 0]))}")
+ax_dirac.set_title("Convergence of Dirac RHS")
+ax_dirac.legend()
+ax_dirac.grid()
+
+# Convergence of bumps
+colors = get_photocopy_colors(n=len(BUMP_WIDTHS))
+fig_bump, ax_bump = plt.subplots(1, 1)
+max_training_points = max(NUM_TRAINING_POINTS)
+for i, bump_width in enumerate(BUMP_WIDTHS):
+    ax_bump.plot(
+        x,
+        results[max_training_points][bump_width][plot_indices],
+        label=f"bump width={bump_width}",
+        c=colors[i],
+    )
+
+ax_bump.set_title("Convergence of smoothed RHS")
+ax_bump.legend()
+ax_bump.grid()
+
+# print(f"L1 error: {np.nanmean(np.abs(solution_analytic - solution_dirac[:, 0]))}")
 
 plt.show()

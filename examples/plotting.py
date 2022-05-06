@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
+import matplotlib.colors as colors
+import matplotlib.cm as cmx
 
 import numpy as np
 
@@ -31,3 +33,11 @@ def plot_data_with_labels(ax, data, labels):
     ax.scatter(
         data[labels >= 0, 0], data[labels >= 0, 1], c=labels[labels >= 0], cmap="Set3",
     )
+
+
+def get_photocopy_colors(n):
+    cmap = plt.get_cmap("Dark2")
+    cNorm = colors.Normalize(vmin=0, vmax=n - 1)
+    scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
+    result = [scalarMap.to_rgba(i) for i in range(n)]
+    return result
