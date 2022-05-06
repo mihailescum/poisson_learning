@@ -10,6 +10,8 @@ from scipy.sparse.linalg import cg as spcg
 
 import graphlearning as gl
 
+from . import numerics
+
 
 class Poisson(gl.ssl.ssl):
     def __init__(
@@ -17,6 +19,7 @@ class Poisson(gl.ssl.ssl):
         W=None,
         rhs=None,
         scale=None,
+        eps_scale=None,
         class_priors=None,
         solver="conjugate_gradient",
         p=1,
@@ -49,10 +52,10 @@ class Poisson(gl.ssl.ssl):
             Class priors (fraction of data belonging to each class). If provided, the predict function
             will attempt to automatic balance the label predictions to predict the correct number of
             nodes in each class.
-        solver : {'spectral', 'conjugate_gradient', 'gradient_descent'} (optional), default='conjugate_gradient'
+        solver : {'spectral', 'conjugate_gradient', 'gradient_descent', 'variational'} (optional), default='conjugate_gradient'
             Choice of solver for Poisson learning.
         p : int (optional), default=1
-            Power for Laplacian, can be any positive real number. Solver will default to 'spectral' if p!=1.
+            Power for Laplacian, can be any positive real number. Solver will default to 'variational' if p!=1.
         noralization : str (optional), default="combinatorial"
             Normalization of he graph laplacian
         use_cuda : bool (optional), default=False
@@ -94,13 +97,19 @@ class Poisson(gl.ssl.ssl):
         super().__init__(W, class_priors)
         self.rhs = rhs
         self.scale = scale
+        self.eps_scale = eps_scale
 
-        if solver not in ["conjugate_gradient", "spectral", "gradient_descent"]:
+        if solver not in [
+            "conjugate_gradient",
+            "spectral",
+            "gradient_descent",
+            "variational",
+        ]:
             sys.exit("Invalid Poisson solver")
         self.solver = solver
         self.p = p
         if p != 1:
-            self.solver = "spectral"
+            self.solver = "variational"
         self.normalization = normalization
         self.use_cuda = use_cuda
         self.min_iter = min_iter
@@ -140,27 +149,9 @@ class Poisson(gl.ssl.ssl):
             source = self.rhs
 
         if self.solver == "conjugate_gradient":  # Conjugate gradient solver
-
-            L = G.laplacian(normalization=self.normalization)
-            if self.normalization == "combinatorial":
-                u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
-                # u = np.empty_like(source, dtype="float64")
-                # for i in range(u.shape[1]):
-                #    u[:, i], _ = spcg(
-                #        L, source[:, i], tol=self.tol, maxiter=self.max_iter
-                #    )
-            elif self.normalization == "normalized":
-                D = G.degree_matrix(p=-0.5)
-                u = gl.utils.conjgrad(L, D * source, tol=self.tol, max_iter=self.max_iter)
-                u = D * u
-            else:
-                raise ValueError(
-                    f"Normalization `{self.normalization}` not supported with \
-                    solver `conjugate_gradient`."
-                )
+            u = self._fit_cg(G, source)
 
         elif self.solver == "gradient_descent":
-
             # Setup matrices
             D = G.degree_matrix(p=-1)
             P = D * W.transpose()
@@ -195,7 +186,6 @@ class Poisson(gl.ssl.ssl):
                 u = ut.cpu().numpy()
 
             else:  # Use CPU
-
                 while (T < self.min_iter or np.max(np.absolute(v - vinf)) > 1 / n) and (
                     T < self.max_iter
                 ):
@@ -212,17 +202,18 @@ class Poisson(gl.ssl.ssl):
 
         # Use spectral solver
         elif self.solver == "spectral":
-
             vals, vecs = G.eigen_decomp(
                 normalization=self.normalization, k=self.spectral_cutoff + 1
             )
             V = vecs[:, 1:]
             vals = vals[1:]
             if self.p != 1:
-                vals = vals**self.p
+                vals = vals ** self.p
             L = sparse.spdiags(1 / vals, 0, self.spectral_cutoff, self.spectral_cutoff)
             u = V @ (L @ (V.T @ source))
-
+        elif self.solver == "variational":
+            u0 = self._fit_cg(G, source)  # Initialize with solution for p=2
+            u = self._fit_variational(u0, source, W)
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
 
@@ -236,3 +227,116 @@ class Poisson(gl.ssl.ssl):
             u = self.scale ** (1 / self.p) * u
 
         return u
+
+    def _fit_cg(self, G, source):
+        L = G.laplacian(normalization=self.normalization).tocsr()
+        if self.normalization == "combinatorial":
+            u = numerics.conjgrad(
+                L, source, tol=self.tol, max_iter=self.max_iter, preconditioner="ilu",
+            )
+            # u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
+            # u = np.empty_like(source, dtype="float64")
+            # D = G.degree_matrix()
+            # for i in range(u.shape[1]):
+            #    u[:, i], _ = spcg(
+            #        L, source[:, i], tol=self.tol, maxiter=self.max_iter, M=D
+            #    )
+        elif self.normalization == "normalized":
+            D = G.degree_matrix(p=-0.5)
+            u = gl.utils.conjgrad(L, D * source, tol=self.tol, max_iter=self.max_iter)
+            u = D * u
+        else:
+            raise ValueError(
+                f"Normalization `{self.normalization}` not supported with \
+                    solver `conjugate_gradient`."
+            )
+        return u
+
+    def _fit_variational(self, u0, source, W):
+        """For algorithm details see 
+        M. Flores, J. Calder, and G. Lerman. "Analysis and algorithms for Lp-based semi-supervised learning on graphs. "
+        Applied and Computational Harmonic Analysis, 60:77-122, 2022."""
+        p = self.p + 1
+        u0 = u0[:, 0]
+        source = -source[:, 0]
+
+        def fun(x):
+            L = 1 / p * W.multiply(np.abs(x[:, np.newaxis] - x) ** p).sum()
+            f = np.dot(x, source)
+            res = L + f
+            return res
+
+        def jac(x):
+            A = W.multiply(np.abs(x[:, np.newaxis] - x) ** (p - 2))
+            D = A.sum(axis=1).A1
+            Lx = D * x - A @ x
+            j = Lx + source
+            return j
+
+        def hessv(x, v):
+            A = W.multiply(np.abs(x[:, np.newaxis] - x) ** (p - 2))
+            D = A.sum(axis=1).A1
+            Lv = D * v - A @ v
+            hv = (p - 1) * Lv
+            return hv
+
+        """import scipy.optimize
+
+        optimize_result = scipy.optimize.minimize(
+            fun=fun,
+            x0=u0,
+            method="Newton-CG",
+            jac=jac,
+            hessp=hessv,
+            options={"xtol": self.tol, "maxit1e7
+        return u"""
+
+        import scipy.sparse.linalg as splinalg
+
+        n = u0.shape[0]
+        # self.scale = None
+        u = n * np.linspace(
+            -1, 1, n + 1
+        )  # n ** 2 * np.concatenate(((n ** 2 * self.eps_scale ** p) * u0.copy(), [0]))
+
+        F = np.zeros(n + 1)
+        J = np.ones((n + 1, n + 1))
+        J[-1, -1] = 0
+        J[:-1, :-1] = 0
+        increment = u
+
+        source = (n ** 2) * source
+
+        res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
+        it = 0
+        while it < self.max_iter and res > self.tol:
+            A = W.multiply(np.abs(u[:-1, np.newaxis] - u[:-1]) ** (p - 2))
+            D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
+            L = D - A
+
+            F[:-1] = L @ u[:-1] + source + u[-1]
+            F[-1] = np.sum(u[:-1])
+
+            J[:-1, :-1] = (p - 1) * L.toarray()
+
+            # sparse Cholesky decomposition
+            # See https://gist.github.com/omitakahiro/c49e5168d04438c5b20c921b928f1f5d
+            # decomp = splinalg.spilu(L.tocsc(), diag_pivot_thresh=0, drop_tol=1e-1)
+            # M = decomp.L @ decomp.U
+            # M = decomp.L.dot(sparse.diags(decomp.U.diagonal() ** 0.5))
+
+            # Linvf = splinalg.cg(L, source, M=M)
+            # Linvf = gl.utils.conjgrad(L, source)
+            # u = ((p - 2) * u - Linvf) / (p - 1)
+
+            # increment = gl.utils.conjgrad(sparse.csr_matrix(J), -F)
+            increment = splinalg.cg(J, -F)
+            u = u + increment[0]
+
+            res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
+            it += 1
+            print(f"It: {it}; Res: {res}; Amax: {A.max()}")
+
+        u = u[:-1, np.newaxis]
+        return u
+
