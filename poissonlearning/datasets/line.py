@@ -13,9 +13,9 @@ def generate(low, high, size):
 
 def greens_function(x, z):
     x = x[:, 0]
-    phi = -0.5 * np.abs(x - z) + 0.5 * (z ** 2) - 0.5 * z + 0.25
-    gamma = -0.5 * (x ** 2) + 0.5 * x - 1.0 / 12.0
-    g = phi + gamma
+    phi = -0.5 * np.abs(x - z)
+    avg = -0.5 * z ** 2 + 0.5 * z - 0.25
+    g = phi - avg
     return g
 
 
