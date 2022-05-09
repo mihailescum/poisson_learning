@@ -70,7 +70,9 @@ Convenience functions for computing the (log) determinant of the matrix that has
 
     p = r_tilde
 
-    rsold = np.diagonal(np.dot(r.T, r_tilde))
+    rsold = np.dot(r.T, r_tilde)
+    if isinstance(rsold, np.ndarray):
+        rsold = np.diagonal(rsold)
 
     err = 1
     i = 0
@@ -88,7 +90,9 @@ Convenience functions for computing the (log) determinant of the matrix that has
         elif preconditioner == "ilu":
             r_tilde = M.solve(r)
 
-        rsnew = np.diagonal(np.dot(r.T, r_tilde))
+        rsnew = np.dot(r.T, r_tilde)
+        if isinstance(rsnew, np.ndarray):
+            rsnew = np.diagonal(rsnew)
 
         beta = rsnew / rsold
         p = r_tilde + beta * p

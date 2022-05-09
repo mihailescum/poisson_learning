@@ -288,16 +288,17 @@ class Poisson(gl.ssl.ssl):
             method="Newton-CG",
             jac=jac,
             hessp=hessv,
-            options={"xtol": self.tol, "maxit1e7
-        return u"""
+            options={"xtol": self.tol, "maxit": 1e7},
+        )
+        print(optimize_result.message)
+        return optimize_result.x"""
 
         import scipy.sparse.linalg as splinalg
 
         n = u0.shape[0]
         # self.scale = None
-        u = n * np.linspace(
-            -1, 1, n + 1
-        )  # n ** 2 * np.concatenate(((n ** 2 * self.eps_scale ** p) * u0.copy(), [0]))
+        # u = n * np.linspace(-1, 1, n + 1)
+        u = np.concatenate((u0.copy(), [0]))
 
         F = np.zeros(n + 1)
         J = np.ones((n + 1, n + 1))
@@ -305,7 +306,7 @@ class Poisson(gl.ssl.ssl):
         J[:-1, :-1] = 0
         increment = u
 
-        source = (n ** 2) * source
+        # source = (n ** 2) * source
 
         res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
         it = 0
@@ -319,23 +320,25 @@ class Poisson(gl.ssl.ssl):
 
             J[:-1, :-1] = (p - 1) * L.toarray()
 
-            # sparse Cholesky decomposition
-            # See https://gist.github.com/omitakahiro/c49e5168d04438c5b20c921b928f1f5d
-            # decomp = splinalg.spilu(L.tocsc(), diag_pivot_thresh=0, drop_tol=1e-1)
-            # M = decomp.L @ decomp.U
-            # M = decomp.L.dot(sparse.diags(decomp.U.diagonal() ** 0.5))
-
             # Linvf = splinalg.cg(L, source, M=M)
             # Linvf = gl.utils.conjgrad(L, source)
             # u = ((p - 2) * u - Linvf) / (p - 1)
 
             # increment = gl.utils.conjgrad(sparse.csr_matrix(J), -F)
-            increment = splinalg.cg(J, -F)
-            u = u + increment[0]
+            # increment = splinalg.cg(J, -F)[0]
+            increment = numerics.conjgrad(
+                sparse.csc_matrix(J), -F, preconditioner="ilu", tol=1e-3
+            )
+            u = u + increment
 
             res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
             it += 1
             print(f"It: {it}; Res: {res}; Amax: {A.max()}")
+
+        """while it < self.max_iter and res > self.tol:
+            def estimate_xi(gradu, max_iter, tol):
+                c = np.
+            xi = 0"""
 
         u = u[:-1, np.newaxis]
         return u

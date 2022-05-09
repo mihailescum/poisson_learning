@@ -9,16 +9,12 @@ import graphlearning as gl
 from plotting import get_photocopy_colors
 
 
-NUM_TRAINING_POINTS = [10000]  # , 20000, 30000]
-BUMP_WIDTHS = [1e-1, 1e-2, 1e-3, "dirac"]
-NUM_PLOTTING_POINTS = 10000
+NUM_TRAINING_POINTS = [1000]  # , 20000, 30000]
+BUMP_WIDTHS = ["dirac"]  # [1e-1, 1e-2, 1e-3, "dirac"]
+NUM_PLOTTING_POINTS = 1000
 
 
 def estimate_epsilon(data):
-    min = data.min(axis=0)
-    max = data.max(axis=0)
-    volume = np.prod(np.abs(max - min))
-
     n = data.shape[0]
     epsilon = 10 * np.log(n) / n
 
@@ -47,10 +43,10 @@ for training_points in NUM_TRAINING_POINTS:
     # W = epsilon_ball_test(dataset.data, epsilon, kernel="uniform")
     W *= epsilon ** (-d)
     # normalization constant, integrate -1 to 1: t^p dt
-    sigma = 1 / 3
+    sigma = 2 / 3
 
     print("Solving Poisson problem...")
-    p = 2
+    p = 4
     for bump_width in BUMP_WIDTHS:
         print(f"Bump width: {bump_width}")
         if isinstance(bump_width, float):
@@ -65,12 +61,12 @@ for training_points in NUM_TRAINING_POINTS:
         poisson = pl.algorithms.Poisson(
             W,
             p=(p - 1),
-            scale=sigma * epsilon ** (p) * n ** 2,
+            scale=0.5 * sigma * epsilon ** p * n ** 2,
             eps_scale=epsilon,
             solver="conjugate_gradient",
             normalization="combinatorial",
             spectral_cutoff=150,
-            tol=1e-4,
+            tol=1e-2,
             max_iter=1e5,
             rhs=rhs,
         )
