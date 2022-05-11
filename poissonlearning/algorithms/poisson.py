@@ -212,8 +212,14 @@ class Poisson(gl.ssl.ssl):
             L = sparse.spdiags(1 / vals, 0, self.spectral_cutoff, self.spectral_cutoff)
             u = V @ (L @ (V.T @ source))
         elif self.solver == "variational":
-            u0 = self._fit_cg(G, source)  # Initialize with solution for p=2
-            u = self._fit_variational(u0, source, W)
+            u = self._fit_cg(G, source)[:, 0]  # Initialize with solution for p=2
+            homotopy_steps = np.linspace(
+                2, self.p + 1, np.floor((self.p - 1.5) * 1.5).astype(int)
+            )
+            print(homotopy_steps)
+            for p_homotopy in homotopy_steps:
+                u = self._fit_variational(u, source[:, 0], W, p_homotopy)
+            u = u[:, np.newaxis]
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
 
@@ -252,19 +258,11 @@ class Poisson(gl.ssl.ssl):
             )
         return u
 
-    def _fit_variational(self, u0, source, W):
+    def _fit_variational(self, u0, source, W, p):
         """For algorithm details see 
         M. Flores, J. Calder, and G. Lerman. "Analysis and algorithms for Lp-based semi-supervised learning on graphs. "
         Applied and Computational Harmonic Analysis, 60:77-122, 2022."""
-        p = self.p + 1
-        u0 = u0[:, 0]
-        source = -source[:, 0]
-
-        def fun(x):
-            L = 1 / p * W.multiply(np.abs(x[:, np.newaxis] - x) ** p).sum()
-            f = np.dot(x, source)
-            res = L + f
-            return res
+        print(f"Homotopy step with p={p}")
 
         def jac(x):
             A = W.multiply(np.abs(x[:, np.newaxis] - x) ** (p - 2))
@@ -272,28 +270,6 @@ class Poisson(gl.ssl.ssl):
             Lx = D * x - A @ x
             j = Lx + source
             return j
-
-        def hessv(x, v):
-            A = W.multiply(np.abs(x[:, np.newaxis] - x) ** (p - 2))
-            D = A.sum(axis=1).A1
-            Lv = D * v - A @ v
-            hv = (p - 1) * Lv
-            return hv
-
-        """import scipy.optimize
-
-        optimize_result = scipy.optimize.minimize(
-            fun=fun,
-            x0=u0,
-            method="Newton-CG",
-            jac=jac,
-            hessp=hessv,
-            options={"xtol": self.tol, "maxit": 1e7},
-        )
-        print(optimize_result.message)
-        return optimize_result.x"""
-
-        import scipy.sparse.linalg as splinalg
 
         n = u0.shape[0]
         # self.scale = None
@@ -306,40 +282,37 @@ class Poisson(gl.ssl.ssl):
         J[:-1, :-1] = 0
         increment = u
 
-        # source = (n ** 2) * source
+        A = W.multiply(np.abs(u[:-1, np.newaxis] - u[:-1]) ** (p - 2))
+        D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
+        L = D - A
+        res = np.max(np.abs(L @ u[:-1] - source))
 
-        res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
         it = 0
+        print(f"It: {it}; Res: {res}; Amax: {L.max()}")
         while it < self.max_iter and res > self.tol:
             A = W.multiply(np.abs(u[:-1, np.newaxis] - u[:-1]) ** (p - 2))
             D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
             L = D - A
 
-            F[:-1] = L @ u[:-1] + source + u[-1]
+            """F[:-1] = L @ u[:-1] + source + u[-1]
             F[-1] = np.sum(u[:-1])
 
             J[:-1, :-1] = (p - 1) * L.toarray()
 
-            # Linvf = splinalg.cg(L, source, M=M)
-            # Linvf = gl.utils.conjgrad(L, source)
-            # u = ((p - 2) * u - Linvf) / (p - 1)
-
-            # increment = gl.utils.conjgrad(sparse.csr_matrix(J), -F)
-            # increment = splinalg.cg(J, -F)[0]
             increment = numerics.conjgrad(
                 sparse.csc_matrix(J), -F, preconditioner="ilu", tol=1e-3
             )
-            u = u + increment
+            u = u + increment"""
+            Lf = numerics.conjgrad(
+                L, source, preconditioner="ilu", tol=1e-10, max_iter=1e3
+            )
+            u[:-1] = 1 / (p - 1) * ((p - 2) * u[:-1] + Lf)
 
-            res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
+            res = np.max(np.abs(L @ u[:-1] - source))
+            # res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
             it += 1
-            print(f"It: {it}; Res: {res}; Amax: {A.max()}")
+            print(f"It: {it}; Res: {res}; Amax: {L.max()}")
 
-        """while it < self.max_iter and res > self.tol:
-            def estimate_xi(gradu, max_iter, tol):
-                c = np.
-            xi = 0"""
-
-        u = u[:-1, np.newaxis]
+        u = u[:-1]
         return u
 
