@@ -1,6 +1,10 @@
 import numpy as np
 import scipy.sparse.linalg as splinalg
 
+import logging
+
+logger = logging.getLogger("pl.numerics")
+
 
 def conjgrad(A, b, x0=None, max_iter=1e5, tol=1e-10, preconditioner=None):
     """Conjugate Gradient Method
@@ -49,6 +53,7 @@ Convenience functions for computing the (log) determinant of the matrix that has
 
     A = A.tocsc()
 
+    logger.info("CG - Constructing preconditioner")
     if preconditioner == "diagonal":
         M = A.diagonal()
         M[(M >= 0) & (M < 1e-10)] = 1e-10
@@ -74,9 +79,12 @@ Convenience functions for computing the (log) determinant of the matrix that has
     if isinstance(rsold, np.ndarray):
         rsold = np.diagonal(rsold)
 
-    err = 1
+    err = np.sqrt(np.sum(rsold))
     i = 0
+
+    logger.info(f"CG - It: {i}; error: {err}")
     while (err > tol) and (i < max_iter):
+
         i += 1
         Ap = A @ p
         alpha = rsold / np.sum(p * Ap, axis=0)
@@ -99,5 +107,6 @@ Convenience functions for computing the (log) determinant of the matrix that has
 
         err = np.sqrt(np.sum(rsnew))
         rsold = rsnew
+        logger.info(f"CG - It: {i}; error: {err}")
 
     return x
