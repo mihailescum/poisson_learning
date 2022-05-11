@@ -35,7 +35,7 @@ def plot_data_with_labels(ax, data, labels):
     )
 
 
-def get_photocopy_colors(n):
+def get_plot_colors(n):
     cmap = plt.get_cmap("Dark2")
     cNorm = colors.Normalize(vmin=0, vmax=n - 1)
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
