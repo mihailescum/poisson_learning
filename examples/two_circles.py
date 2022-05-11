@@ -10,7 +10,11 @@ import graphlearning as gl
 
 from plotting import plot_graph_function_with_triangulation, plot_data_with_labels
 
-NUM_TRAINING_POINTS = 20000
+import logging
+
+logging.basicConfig(level="INFO")
+
+NUM_TRAINING_POINTS = 100000
 NUM_PLOTTING_POINTS = 10000
 if NUM_PLOTTING_POINTS > NUM_TRAINING_POINTS:
     NUM_PLOTTING_POINTS = NUM_TRAINING_POINTS
@@ -47,7 +51,8 @@ def estimate_epsilon(data, d):
 # print(W.count_nonzero())
 epsilon = estimate_epsilon(dataset.data, d=d)
 print(f"Epsilon: {epsilon}")
-W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, kernel="gaussian")
+W = gl.weightmatrix.epsilon_ball(dataset.data, epsilon, eta=lambda x: np.exp(-4 * x))
+sigma = ((1 - 5.0 / (np.e ** 4)) * np.pi) / 32.0
 # print(W.count_nonzero())
 
 # Plot raw data
@@ -63,11 +68,11 @@ p = 2
 poisson_dirac = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n**2 * epsilon**p,
+    scale=0.5 * sigma * epsilon ** (d + 2) * n ** 2,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
-    tol=1e-3,
+    tol=1e-2,
     max_iter=1e6,
     rhs=None,
 )
@@ -75,15 +80,17 @@ solution_dirac = poisson_dirac.fit(train_ind, train_labels)
 
 # Solve the poisson problem with bump RHS
 bump_width = 1e-1
-rhs_bump = pl.algorithms.rhs.bump(dataset.data, train_ind, train_labels, bump_width=bump_width)
+rhs_bump = pl.algorithms.rhs.bump(
+    dataset.data, train_ind, train_labels, bump_width=bump_width
+)
 poisson_bump = pl.algorithms.Poisson(
     W,
     p=(p - 1),
-    scale=n**2 * epsilon**p,
+    scale=0.5 * sigma * epsilon ** (d + 2) * n ** 2,
     solver="conjugate_gradient",
     normalization="combinatorial",
     spectral_cutoff=150,
-    tol=1e-3,
+    tol=1e-2,
     max_iter=1e6,
     rhs=rhs_bump,
 )

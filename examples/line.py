@@ -109,16 +109,16 @@ ax_dirac.plot(
     label=f"analytic solution",
     c=colors[0],
 )
-for i, training_points in enumerate(NUM_TRAINING_POINTS):
-    curve = results[kernel_plotting][training_points]["dirac"].copy()
-    label_values = curve[LABEL_LOCATIONS[:, 0]]
-    curve = curve[~curve.index.isin(LABEL_LOCATIONS[:, 0])]
-    sample = curve.sample(NUM_PLOTTING_POINTS - label_values.size)
+for i, n in enumerate(NUM_TRAINING_POINTS):
+    solution = results[kernel_plotting][n]["dirac"].copy()
+    label_values = solution[LABEL_LOCATIONS[:, 0]]
+    solution = solution[~solution.index.isin(LABEL_LOCATIONS[:, 0])]
+    sample = solution.sample(NUM_PLOTTING_POINTS - label_values.size, random_state=1)
     sample = pd.concat([sample, label_values])
     sample = sample.sort_index()
 
     ax_dirac.plot(
-        sample, label=f"n={training_points}", c=colors[i + 1],
+        sample, label=f"n={n}", c=colors[i + 1],
     )
 
 ax_dirac.set_title(f"Convergence of Dirac RHS with kernel {kernel_plotting}")
@@ -128,12 +128,12 @@ ax_dirac.grid()
 # Convergence of bumps
 colors = get_plot_colors(n=len(BUMP_WIDTHS))
 fig_bump, ax_bump = plt.subplots(1, 1)
-max_training_points = max(NUM_TRAINING_POINTS)
+n_max = max(NUM_TRAINING_POINTS)
 for i, bump_width in enumerate(BUMP_WIDTHS):
-    curve = results[kernel_plotting][max_training_points][bump_width].copy()
-    label_values = curve[LABEL_LOCATIONS[:, 0]]
-    curve = curve[~curve.index.isin(LABEL_LOCATIONS[:, 0])]
-    sample = curve.sample(NUM_PLOTTING_POINTS - label_values.size)
+    solution = results[kernel_plotting][n_max][bump_width].copy()
+    label_values = solution[LABEL_LOCATIONS[:, 0]]
+    solution = solution[~solution.index.isin(LABEL_LOCATIONS[:, 0])]
+    sample = solution.sample(NUM_PLOTTING_POINTS - label_values.size, random_state=1)
     sample = pd.concat([sample, label_values])
     sample = sample.sort_index()
 
@@ -146,13 +146,14 @@ ax_bump.legend()
 ax_bump.grid()
 
 # L1 errors
+bump_width = "dirac"
 errors = {kernel: {} for kernel in KERNELS}
 for kernel in KERNELS:
-    for training_points in NUM_TRAINING_POINTS:
-        dirac = results[kernel][training_points]["dirac"]
-        analytic = results["analytic"].reindex(dirac.index).interpolate()
-        error_L1 = np.abs(dirac - analytic).mean()
-        errors[kernel][training_points] = error_L1
+    for n in NUM_TRAINING_POINTS:
+        solution = results[kernel][n][bump_width]
+        analytic = results["analytic"].reindex(solution.index).interpolate()
+        error_L1 = np.abs(solution - analytic).mean()
+        errors[kernel][n] = error_L1
 
 fig_error, ax_error = plt.subplots(1, 1)
 for kernel in KERNELS:
@@ -164,7 +165,7 @@ for kernel in KERNELS:
         label=kernel,
     )
 ax_error.set_xscale("log")
-ax_error.set_title("L1 Error compared to analytic solution")
+ax_error.set_title(f"L1 Error compared with RHS {bump_width} to analytic solution")
 ax_error.grid()
 ax_error.legend()
 
