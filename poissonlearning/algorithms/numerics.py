@@ -45,7 +45,7 @@ Convenience functions for computing the (log) determinant of the matrix that has
     if x0 is None:
         x = np.zeros_like(b)
     else:
-        x = x0
+        x = x0.copy()
 
     A = A.tocsc()
 
