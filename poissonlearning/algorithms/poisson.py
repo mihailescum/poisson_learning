@@ -3,6 +3,7 @@ under the MIT licence. For the original source code see
 `https://github.com/jwcalder/GraphLearning/blob/master/graphlearning/ssl.py`.
 """
 import sys
+import logging
 
 import numpy as np
 from scipy import sparse
@@ -11,6 +12,8 @@ from scipy.sparse.linalg import cg as spcg
 import graphlearning as gl
 
 from . import numerics
+
+logger = logging.getLogger("pl.poisson")
 
 
 class Poisson(gl.ssl.ssl):
@@ -29,6 +32,8 @@ class Poisson(gl.ssl.ssl):
         max_iter=1000,
         tol=1e-3,
         spectral_cutoff=10,
+        homotopy_steps=None,
+        homotopy_start=None,
     ):
         """Poisson Learning
         ===================
@@ -116,6 +121,8 @@ class Poisson(gl.ssl.ssl):
         self.max_iter = max_iter
         self.tol = tol
         self.spectral_cutoff = spectral_cutoff
+        self.homotopy_steps = homotopy_steps
+        self.homotopy_start = homotopy_start
 
         # Setup accuracy filename
         fname = "_poisson"
@@ -139,6 +146,8 @@ class Poisson(gl.ssl.ssl):
         W = self.graph.weight_matrix
         W = W - sparse.spdiags(W.diagonal(), 0, n, n)
         G = gl.graph(W)
+
+        additional_output = None
 
         # Poisson source term
         if self.rhs is None:
@@ -212,13 +221,24 @@ class Poisson(gl.ssl.ssl):
             L = sparse.spdiags(1 / vals, 0, self.spectral_cutoff, self.spectral_cutoff)
             u = V @ (L @ (V.T @ source))
         elif self.solver == "variational":
-            u = self._fit_cg(G, source)[:, 0]  # Initialize with solution for p=2
-            homotopy_steps = np.linspace(
-                2, self.p + 1, np.floor((self.p - 1.5) * 1.5).astype(int)
-            )
-            print(homotopy_steps)
+            if self.homotopy_start is None:
+                u = self._fit_cg(G, source)[:, 0]  # Initialize with solution for p=2
+            else:
+                u = self.homotopy_start.copy()
+
+            homotopy_steps = self.homotopy_steps
+            if homotopy_steps is None:
+                if self.p > 1.5:
+                    homotopy_steps = np.linspace(
+                        2.5, self.p + 1, np.floor((self.p - 1.5) * 1.5).astype(int)
+                    )
+                else:
+                    homotopy_steps = [self.p + 1]
+
+            additional_output = {2: u}
             for p_homotopy in homotopy_steps:
                 u = self._fit_variational(u, source[:, 0], W, p_homotopy)
+                additional_output[p_homotopy] = u.copy()
             u = u[:, np.newaxis]
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
@@ -232,7 +252,10 @@ class Poisson(gl.ssl.ssl):
         if self.scale is not None:
             u = self.scale ** (1 / self.p) * u
 
-        return u
+        if additional_output is None:
+            return u
+        else:
+            return u, additional_output
 
     def _fit_cg(self, G, source):
         L = G.laplacian(normalization=self.normalization).tocsr()
@@ -262,7 +285,7 @@ class Poisson(gl.ssl.ssl):
         """For algorithm details see 
         M. Flores, J. Calder, and G. Lerman. "Analysis and algorithms for Lp-based semi-supervised learning on graphs. "
         Applied and Computational Harmonic Analysis, 60:77-122, 2022."""
-        print(f"Homotopy step with p={p}")
+        logger.info(f"Variational - Homotopy step with p={p}")
 
         def jac(x):
             A = W.multiply(np.abs(x[:, np.newaxis] - x) ** (p - 2))
@@ -288,7 +311,7 @@ class Poisson(gl.ssl.ssl):
         res = np.max(np.abs(L @ u[:-1] - source))
 
         it = 0
-        print(f"It: {it}; Res: {res}; Amax: {L.max()}")
+        logger.info(f"Variational - It: {it}; Res: {res}; Amax: {L.max()}")
         while it < self.max_iter and res > self.tol:
             A = W.multiply(np.abs(u[:-1, np.newaxis] - u[:-1]) ** (p - 2))
             D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
@@ -304,14 +327,14 @@ class Poisson(gl.ssl.ssl):
             )
             u = u + increment"""
             Lf = numerics.conjgrad(
-                L, source, preconditioner="ilu", tol=1e-10, max_iter=1e3
+                L, source, preconditioner="ilu", tol=1e-8, max_iter=self.max_iter,
             )
             u[:-1] = 1 / (p - 1) * ((p - 2) * u[:-1] + Lf)
 
             res = np.max(np.abs(L @ u[:-1] - source))
             # res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
             it += 1
-            print(f"It: {it}; Res: {res}; Amax: {L.max()}")
+            logger.info(f"Variational - It: {it}; Res: {res}; Amax: {L.max()}")
 
         u = u[:-1]
         return u
