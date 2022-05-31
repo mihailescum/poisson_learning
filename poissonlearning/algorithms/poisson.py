@@ -287,55 +287,43 @@ class Poisson(gl.ssl.ssl):
         Applied and Computational Harmonic Analysis, 60:77-122, 2022."""
         logger.info(f"Variational - Homotopy step with p={p}")
 
-        def jac(x):
-            A = W.multiply(np.abs(x[:, np.newaxis] - x) ** (p - 2))
-            D = A.sum(axis=1).A1
-            Lx = D * x - A @ x
-            j = Lx + source
-            return j
-
         n = u0.shape[0]
         # self.scale = None
         # u = n * np.linspace(-1, 1, n + 1)
-        u = np.concatenate((u0.copy(), [0]))
+        u = u0.copy()  # np.concatenate((u0.copy(), [0]))
 
-        F = np.zeros(n + 1)
-        J = np.ones((n + 1, n + 1))
-        J[-1, -1] = 0
-        J[:-1, :-1] = 0
-        increment = u
+        W = sparse.csc_matrix(W)
 
-        A = W.multiply(np.abs(u[:-1, np.newaxis] - u[:-1]) ** (p - 2))
+        nonzero = W.nonzero()
+        values = np.abs(u[nonzero[0]] - u[nonzero[1]]) ** (p - 2)
+        a = sparse.csc_matrix((values, nonzero), shape=(n, n))
+        A = W.multiply(a)
+
         D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
         L = D - A
-        res = np.max(np.abs(L @ u[:-1] - source))
+        res = np.max(np.abs(L @ u - source))
 
         it = 0
         logger.info(f"Variational - It: {it}; Res: {res}; Amax: {L.max()}")
         while it < self.max_iter and res > self.tol:
-            A = W.multiply(np.abs(u[:-1, np.newaxis] - u[:-1]) ** (p - 2))
+            nonzero = W.nonzero()
+            values = np.abs(u[nonzero[0]] - u[nonzero[1]]) ** (p - 2)
+            a = sparse.csc_matrix((values, nonzero), shape=(n, n))
+            A = W.multiply(a)
+
             D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
             L = D - A
 
-            """F[:-1] = L @ u[:-1] + source + u[-1]
-            F[-1] = np.sum(u[:-1])
-
-            J[:-1, :-1] = (p - 1) * L.toarray()
-
-            increment = numerics.conjgrad(
-                sparse.csc_matrix(J), -F, preconditioner="ilu", tol=1e-3
-            )
-            u = u + increment"""
             Lf = numerics.conjgrad(
                 L, source, preconditioner="ilu", tol=1e-8, max_iter=self.max_iter,
             )
-            u[:-1] = 1 / (p - 1) * ((p - 2) * u[:-1] + Lf)
+            u = 1 / (p - 1) * ((p - 2) * u + Lf)
 
-            res = np.max(np.abs(L @ u[:-1] - source))
+            res = np.max(np.abs(L @ u - source))
             # res = max(np.abs(jac(u[:-1])).max(), np.sum(u[:-1]))
             it += 1
             logger.info(f"Variational - It: {it}; Res: {res}; Amax: {L.max()}")
 
-        u = u[:-1]
+        # u = u[:-1]
         return u
 

@@ -97,7 +97,7 @@ poisson = pl.algorithms.Poisson(
     solver="variational",
     normalization="combinatorial",
     spectral_cutoff=150,
-    tol=1e-8,
+    tol=1e-6,
     max_iter=200,
     rhs=rhs,
 )
