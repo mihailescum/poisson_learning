@@ -15,7 +15,7 @@ logging.basicConfig(level="INFO")
 
 
 def estimate_epsilon(n):
-    factor = 0.4
+    factor = 2
     conn_radius = np.log(n) ** (3 / 4) / np.sqrt(n)
     epsilon = factor * np.log(n) ** (1 / 15) * conn_radius
     return epsilon
@@ -28,13 +28,15 @@ experiments = [
     {"n": 50000, "eps": 0.01250796, "bump": "dirac"},
     {"n": 100000, "eps": 0.00930454, "bump": "dirac"},
     {"n": 300000, "eps": 0.00578709, "bump": "dirac"},
-    {"n": 700000, "eps": 0.00399516, "bump": "dirac"},
+    # {"n": 700000, "eps": 0.00399516, "bump": "dirac"},
     # {"n": 1000000, "eps": 0.00341476, "bump": "dirac"},
 ]
 NUM_PLOTTING_POINTS = 10000
 
 
 for experiment in experiments:
+    experiment["eps"] *= 4
+
     print(f"Experiment: {experiment}")
 
     # Load the one_circle dataset

@@ -36,8 +36,23 @@ def plot_data_with_labels(ax, data, labels):
 
 
 def get_plot_colors(n):
-    cmap = plt.get_cmap("Dark2")
-    cNorm = colors.Normalize(vmin=0, vmax=n - 1)
+    # cmap = plt.get_cmap("Dark2")
+    cmap = plt.get_cmap("binary")
+    cNorm = colors.Normalize(vmin=-(n - 1) * 0.3 * 2, vmax=n - 1)
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
     result = [scalarMap.to_rgba(i) for i in range(n)]
     return result
+
+
+def get_linestyles():
+    """See https://matplotlib.org/stable/gallery/lines_bars_and_markers/linestyles.html"""
+    styles = [
+        "solid",
+        "dashed",
+        "dotted",
+        "dashdot",
+        (0, (3, 1, 1, 1, 1, 1)),  # densely dashdotdotted
+        (0, (5, 5)),  # loosely dashed
+        (0, (1, 5)),  # loosely dotted
+    ]
+    return styles

@@ -3,3 +3,4 @@
 *.egg-info
 /knn_data/
 /data/
+/results/
