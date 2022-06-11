@@ -1,19 +1,14 @@
-from cProfile import run
-from cmath import exp
 import numpy as np
 import pandas as pd
 import logging
-import copy
 
-import matplotlib.pyplot as plt
 
 import poissonlearning as pl
-import graphlearning as gl
 
 import setup
 import storage
 
-LOGGER = logging.getLogger(name=__name__)
+LOGGER = logging.getLogger(name="ex.line")
 logging.basicConfig(level="INFO")
 
 LABEL_LOCATIONS = np.array([0.4, 0.8])
@@ -109,6 +104,7 @@ experiments = [
         "label_locations": LABEL_LOCATIONS,
     },
     {
+from scipy.spatial.distance import cdist
         "n": 20000,
         "eps": 0.007427616,
         "bump": 1e-1,
@@ -127,36 +123,6 @@ experiments = [
 ]"""
 
 
-def run_experiment(dataset, experiment):
-    dataset = copy.deepcopy(dataset)
-
-    LOGGER.info(
-        "Experiment: {}".format({k: v for k, v in experiment if k != "results"})
-    )
-    n, d = dataset.data.shape
-
-    train_ind = experiment["train_indices"]
-    train_labels = dataset.labels[train_ind]
-
-    W = setup.build_weight_matrix(dataset, experiment)
-    sigma = setup.get_normalization_constant(experiment["kernel"], d)
-    rhs = setup.get_rhs(dataset, experiment)
-
-    scale = 0.5 * sigma * experiment["eps"] ** 2 * n ** 2
-    poisson = pl.algorithms.Poisson(
-        W,
-        p=1,
-        scale=scale,
-        solver="conjugate_gradient",
-        normalization="combinatorial",
-        tol=1e-3,
-        max_iter=1e5,
-        rhs=rhs,
-    )
-    solution = poisson.fit(train_ind, train_labels)[:, 0]
-    return solution
-
-
 NUM_TRIALS = 1
 
 # Run experiments
@@ -172,9 +138,17 @@ if __name__ == "__main__":
         for experiment in experiments:
             n = experiment["n"]
             dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
-            solution = run_experiment(dataset, experiment)
+            d = dataset.data.shape[1]
 
-            result = pd.Series(solution, index=dataset.data[:, 0]).sort_index()
+            sigma = setup.get_normalization_constant(experiment["kernel"], d, p=2)
+            scale = 0.5 * sigma * experiment["eps"] ** 2 * n ** 2
+            solution, indices_largest_component = setup.run_experiment_poisson(
+                dataset, experiment, scale
+            )
+
+            result = pd.Series(
+                solution, index=dataset.data[indices_largest_component, 0]
+            ).sort_index()
             if "results" not in experiment:
                 experiment["results"] = []
 

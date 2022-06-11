@@ -2,20 +2,22 @@ import numpy as np
 import graphlearning as gl
 
 
-def generate(center, r, size):
-    radii = np.random.uniform(0, r, size)
-    radii = radii ** (1 / 2)  # number of points within r scales as r^2
-    degrees = np.random.uniform(0, 2 * np.pi, size)
+def generate(center, r, size, rng=None):
+    if rng is None:
+        radii = np.random.uniform(0, r, size)
+        degrees = np.random.uniform(0, 2 * np.pi, size)
+    else:
+        radii = rng.uniform(0, r, size)
+        degrees = rng.uniform(0, 2 * np.pi, size)
 
+    radii = radii ** (1 / 2)  # number of points within r scales as r^2
     x = radii * np.sin(degrees)
     y = radii * np.cos(degrees)
-    result = center + np.vstack([x, y]).T
+    data = center[np.newaxis, :] + np.vstack([x, y]).T
 
-    # Add two label points at the beginning of the data set
-    result[0] = center + np.array([[2 / 3 * r, 0]])
-    result[1] = center - np.array([[2 / 3 * r, 0]])
+    labels = np.where(data[:, 0] > center[0], 1, 0)
 
-    return result
+    return data, labels
 
 
 def greens_function(x, z):
@@ -36,6 +38,5 @@ def greens_function(x, z):
 
 
 if __name__ == "__main__":
-    data = generate(np.array([[0, 0]]), 1, 1000000)
-    labels = np.where(data[:, 0] > 0, 1, 0)
+    data, labels = generate(np.array([0, 0]), 1, 1000000)
     gl.datasets.save(data, labels, "one_circle", overwrite=True)

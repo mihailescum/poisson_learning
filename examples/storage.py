@@ -16,7 +16,7 @@ class _NumpyEncoder(json.JSONEncoder):
 
 def _compute_expeiment_hash(experiment):
     s = "_".join([str(v) for k, v in experiment.items() if k != "results"])
-    h = hashlib.sha256(s.encode("utf-8")).hexdigest()[:16]
+    h = hashlib.sha256(s.encode("utf-8")).hexdigest()[:32]
     return h
 
 
