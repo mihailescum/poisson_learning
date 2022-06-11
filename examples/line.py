@@ -130,7 +130,9 @@ experiments = [
 def run_experiment(dataset, experiment):
     dataset = copy.deepcopy(dataset)
 
-    LOGGER.info(f"Experiment: {experiment}")
+    LOGGER.info(
+        "Experiment: {}".format({k: v for k, v in experiment if k != "results"})
+    )
     n, d = dataset.data.shape
 
     train_ind = experiment["train_indices"]
