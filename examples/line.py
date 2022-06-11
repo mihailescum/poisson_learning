@@ -178,4 +178,4 @@ if __name__ == "__main__":
 
             experiment["results"].append({"seed": seed, "result": result})
 
-    storage.save_experiments(experiments, name="line.hd5", folder="results")
+    storage.save_experiments(experiments, name="line", folder="results")
