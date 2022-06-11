@@ -4,6 +4,7 @@ import matplotlib.colors as colors
 import matplotlib.cm as cmx
 
 import numpy as np
+import pandas as pd
 
 
 def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
@@ -56,3 +57,42 @@ def get_linestyles():
         (0, (1, 5)),  # loosely dotted
     ]
     return styles
+
+
+def error_plot(experiments, ax):
+    linestyles = get_linestyles()
+    for ls, (label, value) in zip(linestyles, experiments.items()):
+        x = [v["n"] for v in value]
+        y = [v["err_mean"] for v in value]
+        lower_error = [v["err_lower"] for v in value]
+        upper_error = [v["err_upper"] for v in value]
+
+        ax.errorbar(
+            x, y, yerr=[lower_error, upper_error], label=label, ls=ls, c="black",
+        )
+
+    ax.grid(linestyle="dashed")
+
+
+def results_1D(experiments, ax, truth=None, num_plotting_points=5000):
+    colors = get_plot_colors(n=len(experiments))
+    linestyles = get_linestyles()
+
+    if truth is not None:
+        ax.plot(
+            truth.sample(num_plotting_points, random_state=1).sort_index(),
+            label=f"Ground Truth",
+            c="red",
+            linestyle="-",
+        )
+
+    for c, ls, (label, e) in zip(colors, linestyles, experiments.items()):
+        solution = e["results"][0]["solution"].copy()
+        label_values = solution[e["label_locations"]]
+        solution = solution[~solution.index.isin(label_values.index)]
+        sample_size = min(num_plotting_points, solution.shape[0]) - label_values.size
+        sample = solution.sample(sample_size, random_state=1)
+        sample = pd.concat([sample, label_values])
+        sample = sample.sort_index()
+
+        ax.plot(sample, label=label, c="black", ls=ls)

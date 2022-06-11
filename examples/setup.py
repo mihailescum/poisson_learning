@@ -76,7 +76,7 @@ def get_rhs(dataset, experiment):
     return rhs
 
 
-def run_experiment_poisson(dataset, experiment, scale):
+def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
     dataset = copy.deepcopy(dataset)
 
     LOGGER.info(
@@ -97,8 +97,8 @@ def run_experiment_poisson(dataset, experiment, scale):
         scale=scale,
         solver="conjugate_gradient",
         normalization="combinatorial",
-        tol=1e-3,
-        max_iter=1e5,
+        tol=tol,
+        max_iter=max_iter,
         rhs=rhs,
     )
     solution = poisson.fit(train_ind, train_labels)[:, 0]

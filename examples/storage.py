@@ -23,7 +23,7 @@ def _compute_expeiment_hash(experiment):
 def load_experiments(name, folder):
     def _convert_arrays(x):
         x["train_indices"] = np.array(x["train_indices"], dtype="int64")
-        x["label_locations"] = np.array(x["train_indices"], dtype="float64")
+        x["label_locations"] = np.array(x["label_locations"], dtype="float64")
         return x
 
     with open(os.path.join(folder, name + ".json"), mode="r") as file:
@@ -36,10 +36,12 @@ def load_experiments(name, folder):
     for experiment in experiments:
         seeds = [s for h, s in keys if h == experiment["hash"]]
         results = [
-            {"seed": s, "result": hdf.get(f"/results/E{experiment['hash']}_{s}"),}
+            {"seed": s, "solution": hdf.get(f"/results/E{experiment['hash']}_{s}"),}
             for s in seeds
         ]
         experiment["results"] = results
+
+    hdf.close()
     return experiments
 
 
@@ -53,7 +55,9 @@ def save_experiments(experiments, name, folder):
         experiment["hash"] = _compute_expeiment_hash(experiment)
         for result in experiment["results"]:
             key = f"E{experiment['hash']}_{result['seed']}"
-            hdf.put(f"results/{key}", result["result"])
+            hdf.put(f"results/{key}", result["solution"])
+
+    hdf.close()
 
     experiments_dump = [
         {k: v for k, v in e.items() if k != "results"} for e in experiments

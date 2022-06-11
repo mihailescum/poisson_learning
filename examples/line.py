@@ -30,8 +30,7 @@ experiments = [
         "train_indices": [0, 1],
         "label_locations": LABEL_LOCATIONS,
     },
-]
-"""{
+    {
         "n": 20000,
         "eps": 0.007427616,
         "bump": "dirac",
@@ -55,6 +54,8 @@ experiments = [
         "train_indices": [0, 1],
         "label_locations": LABEL_LOCATIONS,
     },
+]
+"""
     {
         "n": 1000,
         "eps": 0.103616329,
@@ -104,7 +105,6 @@ experiments = [
         "label_locations": LABEL_LOCATIONS,
     },
     {
-from scipy.spatial.distance import cdist
         "n": 20000,
         "eps": 0.007427616,
         "bump": 1e-1,
@@ -123,7 +123,7 @@ from scipy.spatial.distance import cdist
 ]"""
 
 
-NUM_TRIALS = 1
+NUM_TRIALS = 2
 
 # Run experiments
 if __name__ == "__main__":
@@ -143,7 +143,7 @@ if __name__ == "__main__":
             sigma = setup.get_normalization_constant(experiment["kernel"], d, p=2)
             scale = 0.5 * sigma * experiment["eps"] ** 2 * n ** 2
             solution, indices_largest_component = setup.run_experiment_poisson(
-                dataset, experiment, scale
+                dataset, experiment, scale, tol=1e-6,
             )
 
             result = pd.Series(
@@ -152,6 +152,6 @@ if __name__ == "__main__":
             if "results" not in experiment:
                 experiment["results"] = []
 
-            experiment["results"].append({"seed": seed, "result": result})
+            experiment["results"].append({"seed": seed, "solution": result})
 
     storage.save_experiments(experiments, name="line", folder="results")

@@ -100,6 +100,6 @@ if __name__ == "__main__":
             result["y"] = dataset.data[indices_largest_component, 1]
             result["z"] = solution
 
-            experiment["results"].append({"seed": seed, "result": result})
+            experiment["results"].append({"seed": seed, "solution": result})
 
     storage.save_experiments(experiments, name="one_circle", folder="results")
