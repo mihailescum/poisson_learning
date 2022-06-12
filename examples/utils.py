@@ -45,7 +45,7 @@ def get_normalization_constant(kernel, d, p=2):
     if kernel == "uniform":
         if p == 2:
             if d == 1:
-                # integrate -1 to 1: t^(d+2) dt
+                # integrate -1 to 1: t^2 dt
                 sigma = 2 / 3
     elif kernel == "gaussian":
         if p == 2:
@@ -53,8 +53,8 @@ def get_normalization_constant(kernel, d, p=2):
                 # integrate -1 to 1: exp(-4t^2)t^2 dt
                 sigma = 0.10568126
             elif d == 2:
-                # integrate B_1(0): exp(-4r^2)(r*cos(t))^2 dtdr
-                sigma = np.pi * 0.052840632061
+                # integrate B_1(0): exp(-4r^2)(r*cos(t))^2 r dtdr
+                sigma = np.pi * (1 - 5 * np.e ** (-4)) / 32.0
 
     if sigma is None:
         raise ValueError("Unsupported combination of inputs")

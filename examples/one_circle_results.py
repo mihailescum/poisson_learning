@@ -107,19 +107,25 @@ if __name__ == "__main__":
     ax_analytic.set_title(f"Analytic solution to continuum problem")
 
     # Plot errors
-    """bump_width = "dirac"
-
+    ex_error = {
+        kernel: list(
+            filter(
+                lambda x: x["kernel"] == kernel and x["bump"] == "dirac", experiments,
+            )
+        )
+        for kernel in ["gaussian"]
+    }
     fig_error, ax_error = plt.subplots(1, 1)
-    ex_error = [e for e in experiments if e["bump"] == bump_width]
-    for s in ["unscaled", "scaled"]:
-        errors = [e[f"L1_{s}"] for e in ex_error]
-        n = [e["n"] for e in ex_error]
-        ax_error.plot(n, errors, marker="x", ls="-", label=s)
-        logger.info(f"L1 error {s}: {errors}")
-    ax_error.set_xscale("log")
+    plotting.error_plot(
+        ex_error,
+        ax_error,
+        err_name="err_unscaled_mean",
+        err_lower_name="err_unscaled_lower",
+        err_upper_name="err_unscaled_upper",
+    )
     ax_error.set_title(f"L1 Error compared with RHS {bump_width} to analytic solution")
     ax_error.grid()
-    ax_error.legend()"""
+    ax_error.legend()
 
     if SHOW_PLOTS:
         plt.show()

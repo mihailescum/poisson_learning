@@ -59,13 +59,19 @@ def get_linestyles():
     return styles
 
 
-def error_plot(experiments, ax):
+def error_plot(
+    experiments,
+    ax,
+    err_name="err_mean",
+    err_lower_name="err_lower",
+    err_upper_name="err_upper",
+):
     linestyles = get_linestyles()
     for ls, (label, value) in zip(linestyles, experiments.items()):
         x = [v["n"] for v in value]
-        y = [v["err_mean"] for v in value]
-        lower_error = [v["err_lower"] for v in value]
-        upper_error = [v["err_upper"] for v in value]
+        y = [v[err_name] for v in value]
+        lower_error = [v[err_lower_name] for v in value]
+        upper_error = [v[err_upper_name] for v in value]
 
         ax.errorbar(
             x, y, yerr=[lower_error, upper_error], label=label, ls=ls, c="black",

@@ -28,8 +28,7 @@ experiments = [
         "train_indices": [0, 1],
         "bump": "dirac",
     },
-]
-"""    {
+    {
         "n": 50000,
         "eps": 0.01250796,
         "kernel": "gaussian",
@@ -57,6 +56,8 @@ experiments = [
         "train_indices": [0, 1],
         "bump": "dirac",
     },
+]
+"""
     {
         "n": 1000000,
         "eps": 0.00341476,
@@ -66,7 +67,7 @@ experiments = [
     },
 ]"""
 
-NUM_TRIALS = 1
+NUM_TRIALS = 4
 
 
 def run_trial(seed):
@@ -87,10 +88,11 @@ def run_trial(seed):
         dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
         d = dataset.data.shape[1]
 
-        sigma = utils.get_normalization_constant(experiment["kernel"], d, p=2)
-        scale = 0.5 * sigma * experiment["eps"] ** 2 * n ** 2
+        sigma = utils.get_normalization_constant(experiment["kernel"], d, p)
+        rho2 = np.pi * np.pi  # Density of the probability distribution
+        scale = (sigma / rho2) * experiment["eps"] ** 2 * n ** 2
         solution, indices_largest_component = utils.run_experiment_poisson(
-            dataset, experiment, scale
+            dataset, experiment, scale, tol=1e-8,
         )
 
         result = pd.DataFrame(columns=["x", "y", "z"])

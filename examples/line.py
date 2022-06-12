@@ -54,6 +54,8 @@ experiments = [
         "train_indices": [0, 1],
         "label_locations": LABEL_LOCATIONS,
     },
+]
+"""
     {
         "n": 70000,
         "eps": 0.0023906251116,
@@ -70,8 +72,6 @@ experiments = [
         "train_indices": [0, 1],
         "label_locations": LABEL_LOCATIONS,
     },
-]
-"""
     {
         "n": 300000,
         "eps": 0.000630576889,
@@ -164,7 +164,8 @@ def run_trial(seed):
         d = dataset.data.shape[1]
 
         sigma = utils.get_normalization_constant(experiment["kernel"], d, p=2)
-        scale = 0.5 * sigma * experiment["eps"] ** 2 * n ** 2
+        rho2 = 1  # Density of the probability distribution
+        scale = (sigma / rho2) * experiment["eps"] ** 2 * n ** 2
         solution, indices_largest_component = utils.run_experiment_poisson(
             dataset, experiment, scale, tol=1e-8,
         )
