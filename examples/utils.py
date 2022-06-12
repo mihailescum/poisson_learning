@@ -25,8 +25,8 @@ def build_weight_matrix(dataset, experiment, normalize=True):
     LOGGER.info("Creating weight matrix...")
     d = dataset.data.shape[1]
 
-    W = gl.weightmatrix.epsilon_ball(
-        dataset.data, experiment["eps"], kernel=experiment["kernel"]
+    W = pl.algorithms.epsilon_ball(
+        data=dataset.data, epsilon=experiment["eps"], kernel=experiment["kernel"],
     )
 
     # Remove sigularities by only keeping the largest connected component

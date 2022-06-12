@@ -22,8 +22,12 @@ def _compute_expeiment_hash(experiment):
 
 def load_experiments(name, folder):
     def _convert_arrays(x):
-        x["train_indices"] = np.array(x["train_indices"], dtype="int64")
-        x["label_locations"] = np.array(x["label_locations"], dtype="float64")
+        if "train_indices" in x:
+            x["train_indices"] = np.array(x["train_indices"], dtype="int64")
+
+        if "label_locations" in x:
+            x["label_locations"] = np.array(x["label_locations"], dtype="float64")
+
         return x
 
     with open(os.path.join(folder, name + ".json"), mode="r") as file:
