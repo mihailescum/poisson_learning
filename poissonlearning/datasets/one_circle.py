@@ -23,7 +23,7 @@ def generate(center, r, size, rng=None):
 def greens_function(x, z):
     """See Benedikt Wirth (2020) "Green's Function for the Neumann–Poisson Problem on n-Dimensional Balls", 
     The American Mathematical Monthly, 127:8, 737-743, DOI: 10.1080/00029890.2020.179091"""
-    w2inv = 2 / np.pi
+    w2inv = 1 / np.pi
     z_norm = np.linalg.norm(z)
 
     with np.errstate(divide="ignore"):

@@ -39,33 +39,14 @@ def compute_errors(experiments):
 
             mask_infty = np.isfinite(analytic)
 
-            error_L1_unscaled = np.abs(z[mask_infty] - analytic[mask_infty]).mean()
-            result["L1_unscaled"] = error_L1_unscaled
-
-            scale = (analytic[mask_infty] / z[mask_infty]).mean()
-            LOGGER.info(f"scale for {experiment['n']}:{result['seed']}: {scale}")
-            z_scaled = scale * z
-            error_L1_scaled = np.abs(z_scaled[mask_infty] - analytic[mask_infty]).mean()
-            result["L1_scaled"] = error_L1_scaled
+            error_L1 = np.abs(z[mask_infty] - analytic[mask_infty]).mean()
+            result["err_L1"] = error_L1
 
     for experiment in experiments:
-        L1_errors_unscaled = [r["L1_unscaled"] for r in experiment["results"]]
-        experiment["err_unscaled_mean"] = np.mean(L1_errors_unscaled)
-        experiment["err_unscaled_upper"] = (
-            np.max(L1_errors_unscaled) - experiment["err_unscaled_mean"]
-        )
-        experiment["err_unscaled_lower"] = experiment["err_unscaled_mean"] - np.min(
-            L1_errors_unscaled
-        )
-
-        L1_errors_scaled = [r["L1_scaled"] for r in experiment["results"]]
-        experiment["err_scaled_mean"] = np.mean(L1_errors_scaled)
-        experiment["err_scaled_upper"] = (
-            np.max(L1_errors_scaled) - experiment["err_scaled_mean"]
-        )
-        experiment["err_scaled_lower"] = experiment["err_scaled_mean"] - np.min(
-            L1_errors_scaled
-        )
+        L1_errors = [r["err_L1"] for r in experiment["results"]]
+        experiment["err_mean"] = np.mean(L1_errors)
+        experiment["err_upper"] = np.max(L1_errors) - experiment["err_mean"]
+        experiment["err_lower"] = experiment["err_mean"] - np.min(L1_errors)
 
 
 if __name__ == "__main__":
@@ -116,15 +97,8 @@ if __name__ == "__main__":
         for kernel in ["gaussian"]
     }
     fig_error, ax_error = plt.subplots(1, 1)
-    plotting.error_plot(
-        ex_error,
-        ax_error,
-        err_name="err_unscaled_mean",
-        err_lower_name="err_unscaled_lower",
-        err_upper_name="err_unscaled_upper",
-    )
+    plotting.error_plot(ex_error, ax_error, fit="polynomial")
     ax_error.set_title(f"L1 Error compared with RHS {bump_width} to analytic solution")
-    ax_error.grid()
     ax_error.legend()
 
     if SHOW_PLOTS:

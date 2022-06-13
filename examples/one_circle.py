@@ -88,9 +88,9 @@ def run_trial(seed):
         dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
         d = dataset.data.shape[1]
 
-        sigma = utils.get_normalization_constant(experiment["kernel"], d, p)
-        rho2 = np.pi * np.pi  # Density of the probability distribution
-        scale = (sigma / rho2) * experiment["eps"] ** 2 * n ** 2
+        sigma = utils.get_normalization_constant(experiment["kernel"], d)
+        rho2 = 1.0 / (np.pi * np.pi)  # Density of the probability distribution
+        scale = 0.5 * sigma * rho2 * experiment["eps"] ** 2 * n ** 2
         solution, indices_largest_component = utils.run_experiment_poisson(
             dataset, experiment, scale, tol=1e-8,
         )

@@ -5,6 +5,10 @@ import matplotlib.cm as cmx
 
 import numpy as np
 import pandas as pd
+import scipy.optimize
+import logging
+
+LOGGER = logging.getLogger(__name__)
 
 
 def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
@@ -27,6 +31,9 @@ def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
     z_masked_infty[np.isnan(z_masked_infty)] = 0.0
 
     ax.plot_trisurf(t, z_masked_infty, cmap="viridis")
+
+
+LOGGER
 
 
 def plot_data_with_labels(ax, data, labels):
@@ -65,10 +72,14 @@ def error_plot(
     err_name="err_mean",
     err_lower_name="err_lower",
     err_upper_name="err_upper",
+    fit=None,
 ):
     linestyles = get_linestyles()
     for ls, (label, value) in zip(linestyles, experiments.items()):
         x = [v["n"] for v in value]
+        if len(x) == 0:
+            continue
+
         y = [v[err_name] for v in value]
         lower_error = [v[err_lower_name] for v in value]
         upper_error = [v[err_upper_name] for v in value]
@@ -76,6 +87,27 @@ def error_plot(
         ax.errorbar(
             x, y, yerr=[lower_error, upper_error], label=label, ls=ls, c="black",
         )
+        # Fit exponential error curve
+        def _func_exp(X, a, c):
+            return a * np.exp(-c * X)
+
+        def _func_polynomial(X, a, n):
+            return a * (X ** (-n))
+
+        if fit == "exponential":
+            popt, _ = scipy.optimize.curve_fit(_func_exp, x, y, p0=(1, 1e-5))
+
+            xplot = np.linspace(np.min(x), np.max(x), 1000)
+            yplot = _func_exp(xplot, *popt)
+            ax.plot(xplot, yplot, c="red", ls=ls, label=f"{label} (exponential fit)")
+            LOGGER.info(f"Fitted parameters: {popt}")
+        elif fit == "polynomial":
+            popt, _ = scipy.optimize.curve_fit(_func_polynomial, x, y, p0=(1, 1))
+
+            xplot = np.linspace(np.min(x), np.max(x), 1000)
+            yplot = _func_polynomial(xplot, *popt)
+            ax.plot(xplot, yplot, c="red", ls=ls, label=f"{label} (polynomial fit)")
+            LOGGER.info(f"Fitted parameters: {popt}")
 
     ax.grid(linestyle="dashed")
 

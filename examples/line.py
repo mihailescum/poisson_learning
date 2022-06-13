@@ -54,6 +54,38 @@ experiments = [
         "train_indices": [0, 1],
         "label_locations": LABEL_LOCATIONS,
     },
+    {
+        "n": 1000,
+        "eps": 0.103616329,
+        "bump": "dirac",
+        "kernel": "gaussian",
+        "train_indices": [0, 1],
+        "label_locations": LABEL_LOCATIONS,
+    },
+    {
+        "n": 10000,
+        "eps": 0.01381551,
+        "bump": "dirac",
+        "kernel": "gaussian",
+        "train_indices": [0, 1],
+        "label_locations": LABEL_LOCATIONS,
+    },
+    {
+        "n": 20000,
+        "eps": 0.007427616,
+        "bump": "dirac",
+        "kernel": "gaussian",
+        "train_indices": [0, 1],
+        "label_locations": LABEL_LOCATIONS,
+    },
+    {
+        "n": 50000,
+        "eps": 0.003245933485,
+        "bump": "dirac",
+        "kernel": "gaussian",
+        "train_indices": [0, 1],
+        "label_locations": LABEL_LOCATIONS,
+    },
 ]
 """
     {
@@ -77,38 +109,6 @@ experiments = [
         "eps": 0.000630576889,
         "bump": "dirac",
         "kernel": "uniform",
-        "train_indices": [0, 1],
-        "label_locations": LABEL_LOCATIONS,
-    },
-    {
-        "n": 1000,
-        "eps": 0.103616329,
-        "bump": "dirac",
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "label_locations": LABEL_LOCATIONS,
-    },
-    {
-        "n": 10000,
-        "eps": 0.01381551,
-        "bump": "dirac",
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "label_locations": LABEL_LOCATIONS,
-    },
-    {
-        "n": 20000,
-        "eps": 0.007427616,
-        "bump": "dirac",
-        "kernel": "gaussian",
-        "traiexperiment_experimentsn_indices": [0, 1],
-        "label_locations": LABEL_LOCATIONS,
-    },
-    {
-        "n": 50000,
-        "eps": 0.003245933485,
-        "bump": "dirac",
-        "kernel": "gaussian",
         "train_indices": [0, 1],
         "label_locations": LABEL_LOCATIONS,
     },
@@ -165,7 +165,7 @@ def run_trial(seed):
 
         sigma = utils.get_normalization_constant(experiment["kernel"], d, p=2)
         rho2 = 1  # Density of the probability distribution
-        scale = (sigma / rho2) * experiment["eps"] ** 2 * n ** 2
+        scale = 0.5 * sigma * rho2 * experiment["eps"] ** 2 * n ** 2
         solution, indices_largest_component = utils.run_experiment_poisson(
             dataset, experiment, scale, tol=1e-8,
         )

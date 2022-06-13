@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import scipy.optimize
 import logging
 
 import matplotlib.pyplot as plt
@@ -69,7 +68,7 @@ if __name__ == "__main__":
                 experiments,
             )
         )[0]
-        for n in [10000, 20000, 50000, 100000]
+        for n in [10000, 20000, 50000]  # , 100000]
     }
 
     fig_dirac, ax_dirac = plt.subplots(1, 1)
@@ -85,7 +84,7 @@ if __name__ == "__main__":
     ax_dirac.grid(linestyle="dashed")
 
     # Convergence of bumps
-    n = 100000
+    n = 50000
     kernel = "uniform"
     ex_bumps = {
         f"bump width={bump}": list(
@@ -118,20 +117,7 @@ if __name__ == "__main__":
         for kernel in ["uniform", "gaussian"]
     }
     fig_error, ax_error = plt.subplots(1, 1)
-    plotting.error_plot(ex_error, ax_error)
-
-    # Fit exponential error curve
-    def _func_exp(x, a, c):
-        return a * np.exp(-c * x)
-
-    x = [e["n"] for e in ex_error["uniform"]]
-    y = [e["err_mean"] for e in ex_error["uniform"]]
-    popt, pcov = scipy.optimize.curve_fit(_func_exp, x, y, p0=(1, 1e-5))
-    LOGGER.info("popt: {}".format(popt))
-
-    xplot = np.linspace(np.min(x), np.max(x), 1000)
-    yplot = _func_exp(xplot, *popt)
-    ax_error.plot(xplot, yplot, c="red", ls="--")
+    plotting.error_plot(ex_error, ax_error, fit="exponential")
 
     # ax_error.set_xscale("log")
     ax_error.set_title("L1 error of solution with dirac RHS")
