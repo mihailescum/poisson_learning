@@ -14,8 +14,8 @@ class _NumpyEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def _compute_expeiment_hash(experiment):
-    s = "_".join([str(v) for k, v in experiment.items() if k != "results"])
+def _compute_run_hash(experiment):
+    s = "_".join([str(v) for _, v in experiment.items()])
     h = hashlib.sha256(s.encode("utf-8")).hexdigest()[:32]
     return h
 
@@ -32,39 +32,47 @@ def load_experiments(name, folder):
 
     with open(os.path.join(folder, name + ".json"), mode="r") as file:
         experiments = json.load(file, object_hook=_convert_arrays)
+
+    return experiments
+
+
+def load_results(name, folder):
+    experiments = load_experiments(name, folder)
+
     hdf = pd.HDFStore(os.path.join(folder, name + ".hd5"), mode="r")
-    keys = [
-        m.groups() for k in hdf.keys() if (m := re.match("\/results\/E(.*)_(.*)", k))
-    ]
 
     for experiment in experiments:
-        seeds = [s for h, s in keys if h == experiment["hash"]]
-        results = [
-            {"seed": s, "solution": hdf.get(f"/results/E{experiment['hash']}_{s}"),}
-            for s in seeds
-        ]
-        experiment["results"] = results
+        solution = hdf.get(f"results/hash_{experiment['hash']}")
+        experiment["solution"] = solution
 
     hdf.close()
     return experiments
 
 
-def save_experiments(experiments, name, folder):
+def save_results(results, name, folder):
     if not os.path.exists(folder):
         os.makedirs(folder)
 
     hdf = pd.HDFStore(os.path.join(folder, name + ".hd5"), mode="w")
 
-    for experiment in experiments:
-        experiment["hash"] = _compute_expeiment_hash(experiment)
-        for result in experiment["results"]:
-            key = f"E{experiment['hash']}_{result['seed']}"
-            hdf.put(f"results/{key}", result["solution"])
+    experiment_runs = []
+    for result in results:
+        run = {
+            "n": result["n"],
+            "eps": result["eps"],
+            "bump": result["bump"],
+            "kernel": result["kernel"],
+            "train_indices": result["train_indices"],
+            "label_locations": result["label_locations"],
+            "seed": result["seed"],
+        }
+        hash = _compute_run_hash(run)
+        run["hash"] = hash
+
+        hdf.put(f"results/hash_{hash}", result["solution"])
+        experiment_runs.append(run)
 
     hdf.close()
 
-    experiments_dump = [
-        {k: v for k, v in e.items() if k != "results"} for e in experiments
-    ]
     with open(os.path.join(folder, name + ".json"), mode="w") as file:
-        file.write(json.dumps(experiments_dump, cls=_NumpyEncoder, indent=2))
+        file.write(json.dumps(experiment_runs, cls=_NumpyEncoder, indent=2))

@@ -7,7 +7,7 @@ import logging
 
 import numpy as np
 from scipy import sparse
-from scipy.sparse.linalg import cg as spcg
+import scipy.sparse.linalg as splinalg
 
 import graphlearning as gl
 
@@ -123,6 +123,10 @@ class Poisson(gl.ssl.ssl):
         self.spectral_cutoff = spectral_cutoff
         self.homotopy_steps = homotopy_steps
         self.homotopy_start = homotopy_start
+        self.preconditioner = None
+        self.L = None
+        self.G = None
+        self.W = None
 
         # Setup accuracy filename
         fname = "_poisson"
@@ -143,9 +147,12 @@ class Poisson(gl.ssl.ssl):
         k = len(unique_labels)
 
         # Zero out diagonal for faster convergence
-        W = self.graph.weight_matrix
-        W = W - sparse.spdiags(W.diagonal(), 0, n, n)
-        G = gl.graph(W)
+        if self.W is None:
+            self.W = self.graph.weight_matrix
+            self.W = self.W - sparse.spdiags(self.W.diagonal(), 0, n, n)
+
+        if self.G is None:
+            self.G = gl.graph(self.W)
 
         additional_output = None
 
@@ -158,21 +165,21 @@ class Poisson(gl.ssl.ssl):
             source = self.rhs
 
         if self.solver == "conjugate_gradient":  # Conjugate gradient solver
-            u = self._fit_cg(G, source)
+            u = self._fit_cg(self.G, source)
 
         elif self.solver == "gradient_descent":
             # Setup matrices
-            D = G.degree_matrix(p=-1)
-            P = D * W.transpose()
+            D = self.G.degree_matrix(p=-1)
+            P = D * self.W.transpose()
             Db = D * source
 
             # Invariant distribution
             v = np.zeros(n)
             v[train_ind] = 1
             v = v / np.sum(v)
-            deg = G.degree_vector()
+            deg = self.G.degree_vector()
             vinf = deg / np.sum(deg)
-            RW = W.transpose() * D
+            RW = self.W.transpose() * D
             u = np.zeros((n, k))
 
             # Number of iterations
@@ -237,14 +244,14 @@ class Poisson(gl.ssl.ssl):
 
             additional_output = {2: u}
             for p_homotopy in homotopy_steps:
-                u = self._fit_variational(u, source[:, 0], W, p_homotopy)
+                u = self._fit_variational(u, source[:, 0], self.W, p_homotopy)
                 additional_output[p_homotopy] = u.copy()
             u = u[:, np.newaxis]
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
 
         # Normalize for zero weighted mean
-        D = G.degree_vector()
+        D = self.G.degree_vector()
         shift = np.dot(D, u) / np.sum(D)
         u = u - shift
 
@@ -258,10 +265,19 @@ class Poisson(gl.ssl.ssl):
             return u, additional_output
 
     def _fit_cg(self, G, source):
-        L = G.laplacian(normalization=self.normalization).tocsr()
+        if self.L is None:
+            self.L = G.laplacian(normalization=self.normalization).tocsr()
+
         if self.normalization == "combinatorial":
+            if self.preconditioner is None:
+                self.preconditioner = splinalg.spilu(self.L.tocsc())
+
             u = numerics.conjgrad(
-                L, source, tol=self.tol, max_iter=self.max_iter, preconditioner="ilu",
+                self.L,
+                source,
+                tol=self.tol,
+                max_iter=self.max_iter,
+                preconditioner=self.preconditioner,
             )
             # u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
             # u = np.empty_like(source, dtype="float64")

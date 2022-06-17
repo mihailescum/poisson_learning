@@ -54,7 +54,9 @@ Convenience functions for computing the (log) determinant of the matrix that has
     A = A.tocsc()
 
     logger.info("CG - Constructing preconditioner")
-    if preconditioner == "diagonal":
+    if isinstance(preconditioner, splinalg.SuperLU):
+        M = preconditioner
+    elif preconditioner == "diagonal":
         M = A.diagonal()
         M[(M >= 0) & (M < 1e-10)] = 1e-10
         M[(M < 0) & (M > -1e-10)] = -1e-10
@@ -70,7 +72,7 @@ Convenience functions for computing the (log) determinant of the matrix that has
         r_tilde = r
     elif preconditioner == "diagonal":
         r_tilde = Minv * r
-    elif preconditioner == "ilu":
+    elif preconditioner == "ilu" or isinstance(preconditioner, splinalg.SuperLU):
         r_tilde = M.solve(r)
 
     p = r_tilde
@@ -95,7 +97,7 @@ Convenience functions for computing the (log) determinant of the matrix that has
             r_tilde = r
         elif preconditioner == "diagonal":
             r_tilde = Minv * r
-        elif preconditioner == "ilu":
+        elif preconditioner == "ilu" or isinstance(preconditioner, splinalg.SuperLU):
             r_tilde = M.solve(r)
 
         rsnew = np.dot(r.T, r_tilde)

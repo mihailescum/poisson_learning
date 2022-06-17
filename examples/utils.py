@@ -61,17 +61,16 @@ def get_normalization_constant(kernel, d, p=2):
     return sigma
 
 
-def get_rhs(dataset, experiment):
+def get_rhs(dataset, train_ind, bump):
     LOGGER.info("Solving Poisson problem...")
 
-    train_ind = experiment["train_indices"]
     train_labels = dataset.labels[train_ind]
 
-    if isinstance(experiment["bump"], float):
+    if isinstance(bump, float):
         rhs = pl.algorithms.rhs.bump(
-            dataset.data, train_ind, train_labels, bump_width=experiment["bump"]
+            dataset.data, train_ind, train_labels, bump_width=bump
         )
-    elif experiment["bump"] == "dirac":
+    elif bump == "dirac":
         rhs = None
     return rhs
 
@@ -89,17 +88,26 @@ def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
     dataset.data = dataset.data[indices_largest_component]
     dataset.labels = dataset.labels[indices_largest_component]
 
-    rhs = get_rhs(dataset, experiment)
+    bumps = experiment["bump"]
+    if not isinstance(bumps, list):
+        bumps = [bumps]
 
-    poisson = pl.algorithms.Poisson(
-        W,
-        p=1,
-        scale=scale,
-        solver="conjugate_gradient",
-        normalization="combinatorial",
-        tol=tol,
-        max_iter=max_iter,
-        rhs=rhs,
-    )
-    solution = poisson.fit(train_ind, train_labels)[:, 0]
+    solution = []
+    for bump in bumps:
+        rhs = get_rhs(dataset, train_ind, bump)
+
+        poisson = pl.algorithms.Poisson(
+            W,
+            p=1,
+            scale=scale,
+            solver="conjugate_gradient",
+            normalization="combinatorial",
+            tol=tol,
+            max_iter=max_iter,
+            rhs=rhs,
+        )
+        solution.append(
+            {"bump": bump, "solution": poisson.fit(train_ind, train_labels)[:, 0]},
+        )
+
     return solution, indices_largest_component

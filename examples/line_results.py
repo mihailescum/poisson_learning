@@ -44,7 +44,7 @@ def compute_errors(experiments):
 
 if __name__ == "__main__":
     LOGGER.info("Loading experiments")
-    experiments = storage.load_experiments(name="line", folder="results")
+    experiments = storage.load_results(name="line", folder="results")
 
     # Compute errors
     LOGGER.info("Computing errors...")
