@@ -22,9 +22,6 @@ def _compute_run_hash(experiment):
 
 def load_experiments(name, folder):
     def _convert_arrays(x):
-        if "train_indices" in x:
-            x["train_indices"] = np.array(x["train_indices"], dtype="int64")
-
         if "label_locations" in x:
             x["label_locations"] = np.array(x["label_locations"], dtype="float64")
 
@@ -62,7 +59,6 @@ def save_results(results, name, folder):
             "eps": result["eps"],
             "bump": result["bump"],
             "kernel": result["kernel"],
-            "train_indices": result["train_indices"],
             "label_locations": result["label_locations"],
             "seed": result["seed"],
         }

@@ -14,10 +14,11 @@ LOGGER = logging.getLogger(name="ex.line")
 logging.basicConfig(level="INFO")
 
 
-NUM_TRIALS = 2
+NUM_TRIALS = 10
 
 
 def run_trial(experiments, seed):
+    LOGGER.info(f"Running trial with seed='{seed}'")
     rng = np.random.default_rng(seed=seed)
 
     label_locations = experiments[0]["label_locations"]

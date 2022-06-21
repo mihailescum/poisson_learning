@@ -62,7 +62,7 @@ def get_normalization_constant(kernel, d, p=2):
 
 
 def get_rhs(dataset, train_ind, bump):
-    LOGGER.info("Solving Poisson problem...")
+    LOGGER.info(f"Computing RHS with bump='{bump}'...")
 
     train_labels = dataset.labels[train_ind]
 
@@ -81,7 +81,8 @@ def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
     LOGGER.info(
         "Experiment: {}".format({k: v for k, v in experiment.items() if k != "results"})
     )
-    train_ind = experiment["train_indices"]
+    label_locations = experiment["label_locations"]
+    train_ind = np.arange(len(label_locations))
     train_labels = dataset.labels[train_ind]
 
     W, indices_largest_component = build_weight_matrix(dataset, experiment)
@@ -96,6 +97,7 @@ def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
     for bump in bumps:
         rhs = get_rhs(dataset, train_ind, bump)
 
+        LOGGER.info("Solving Poisson problem...")
         poisson = pl.algorithms.Poisson(
             W,
             p=1,
@@ -106,8 +108,7 @@ def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
             max_iter=max_iter,
             rhs=rhs,
         )
-        solution.append(
-            {"bump": bump, "solution": poisson.fit(train_ind, train_labels)[:, 0]},
-        )
+        fit = poisson.fit(train_ind, train_labels)[:, 0]
+        solution.append({"bump": bump, "solution": fit})
 
     return solution, indices_largest_component

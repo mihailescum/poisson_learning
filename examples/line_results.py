@@ -28,18 +28,11 @@ def compute_analytic_solution(x, label_locations):
 
 def compute_errors(experiments):
     for experiment in experiments:
-        for result in experiment["results"]:
-            solution = result["solution"]
-            x = solution.index
-            analytic = compute_analytic_solution(x, experiment["label_locations"])
-            error_L1 = np.abs(solution - analytic).mean()
-            result["error_L1"] = error_L1
-
-    for experiment in experiments:
-        L1_errors = [r["error_L1"] for r in experiment["results"]]
-        experiment["err_mean"] = np.mean(L1_errors)
-        experiment["err_upper"] = np.max(L1_errors) - experiment["err_mean"]
-        experiment["err_lower"] = experiment["err_mean"] - np.min(L1_errors)
+        solution = experiment["solution"]
+        x = solution.index
+        analytic = compute_analytic_solution(x, experiment["label_locations"])
+        error_L1 = np.abs(solution - analytic).mean()
+        experiment["error_L1"] = error_L1
 
 
 if __name__ == "__main__":
@@ -68,7 +61,7 @@ if __name__ == "__main__":
                 experiments,
             )
         )[0]
-        for n in [10000, 20000, 50000]  # , 100000]
+        for n in [10000, 20000, 50000, 100000, 300000]
     }
 
     fig_dirac, ax_dirac = plt.subplots(1, 1)
@@ -84,8 +77,8 @@ if __name__ == "__main__":
     ax_dirac.grid(linestyle="dashed")
 
     # Convergence of bumps
-    n = 50000
-    kernel = "uniform"
+    n = 300000
+    kernel = "gaussian"
     ex_bumps = {
         f"bump width={bump}": list(
             filter(
@@ -93,7 +86,7 @@ if __name__ == "__main__":
                 experiments,
             )
         )[0]
-        for bump in ["dirac"]
+        for bump in ["dirac", 0.001, 0.01, 0.1]
     }
 
     fig_bump, ax_bump = plt.subplots(1, 1)
@@ -116,8 +109,18 @@ if __name__ == "__main__":
         )
         for kernel in ["uniform", "gaussian"]
     }
+    n_error = [1000, 10000, 20000, 35000, 50000, 70000, 100000, 200000, 300000]
+    error = {kernel: {} for kernel in ex_error.keys()}
+    for kernel, ex_error_kernel in ex_error.items():
+        for n in n_error:
+            ex = list(filter(lambda x: x["n"] == n, ex_error_kernel))
+            error[kernel][n] = {}
+            error[kernel][n]["mean"] = np.mean([e["error_L1"] for e in ex])
+            error[kernel][n]["max"] = np.max([e["error_L1"] for e in ex])
+            error[kernel][n]["min"] = np.min([e["error_L1"] for e in ex])
+
     fig_error, ax_error = plt.subplots(1, 1)
-    plotting.error_plot(ex_error, ax_error, fit="exponential")
+    plotting.error_plot(error, ax_error, fit="polynomial")
 
     # ax_error.set_xscale("log")
     ax_error.set_title("L1 error of solution with dirac RHS")

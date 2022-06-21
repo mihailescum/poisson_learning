@@ -67,22 +67,17 @@ def get_linestyles():
 
 
 def error_plot(
-    experiments,
-    ax,
-    err_name="err_mean",
-    err_lower_name="err_lower",
-    err_upper_name="err_upper",
-    fit=None,
+    errors, ax, fit=None,
 ):
     linestyles = get_linestyles()
-    for ls, (label, value) in zip(linestyles, experiments.items()):
-        x = [v["n"] for v in value]
+    for ls, (label, value) in zip(linestyles, errors.items()):
+        x = list(value.keys())
         if len(x) == 0:
             continue
 
-        y = [v[err_name] for v in value]
-        lower_error = [v[err_lower_name] for v in value]
-        upper_error = [v[err_upper_name] for v in value]
+        y = [value[n]["mean"] for n in x]
+        lower_error = [value[n]["mean"] - value[n]["min"] for n in x]
+        upper_error = [value[n]["max"] - value[n]["mean"] for n in x]
 
         ax.errorbar(
             x, y, yerr=[lower_error, upper_error], label=label, ls=ls, c="black",
@@ -125,12 +120,16 @@ def results_1D(experiments, ax, truth=None, num_plotting_points=5000):
         )
 
     for c, ls, (label, e) in zip(colors, linestyles, experiments.items()):
-        solution = e["results"][0]["solution"].copy()
-        label_values = solution[e["label_locations"]]
-        solution = solution[~solution.index.isin(label_values.index)]
-        sample_size = min(num_plotting_points, solution.shape[0]) - label_values.size
-        sample = solution.sample(sample_size, random_state=1)
-        sample = pd.concat([sample, label_values])
+        label_locations = e["label_locations"][:, np.newaxis]
+        dist_to_labels = np.abs(e["solution"].index.to_numpy() - label_locations)
+        close_to_labels = np.any(dist_to_labels < 1e-4, axis=0)
+
+        sample_values = e["solution"][~close_to_labels]
+        sample_size = (
+            min(num_plotting_points, sample_values.shape[0]) - close_to_labels.sum()
+        )
+        sample = sample_values.sample(sample_size, random_state=1)
+        sample = pd.concat([sample, e["solution"][close_to_labels]])
         sample = sample.sort_index()
 
-        ax.plot(sample, label=label, c="black", ls=ls)
+        ax.plot(sample, label=label, c=c, ls=ls)
