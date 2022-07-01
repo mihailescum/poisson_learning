@@ -109,7 +109,8 @@ if __name__ == "__main__":
         )
         for kernel in ["uniform", "gaussian"]
     }
-    n_error = [1000, 10000, 20000, 35000, 50000, 70000, 100000, 200000, 300000]
+
+    n_error = sorted(list(set([e["n"] for e in list(ex_error.values())[0]])))
     error = {kernel: {} for kernel in ex_error.keys()}
     for kernel, ex_error_kernel in ex_error.items():
         for n in n_error:
@@ -125,6 +126,11 @@ if __name__ == "__main__":
     # ax_error.set_xscale("log")
     ax_error.set_title("L1 error of solution with dirac RHS")
     ax_error.legend()
+
+    if SAVE_PLOTS:
+        fig_dirac.savefig("plots/line_convergence.png")
+        fig_bump.savefig("plots/line_bump.png")
+        fig_error.savefig("plots/line_error.png")
 
     if SHOW_PLOTS:
         plt.show()

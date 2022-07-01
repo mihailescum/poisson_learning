@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import logging
 import multiprocessing
+from functools import partial
+import copy
 
 import poissonlearning as pl
 
@@ -13,50 +15,7 @@ logging.basicConfig(level="INFO")
 
 
 # `n` will be overwritten with the number of nodes from the largest connected component
-experiments = [
-    {
-        "n": 10000,
-        "eps": 0.02452177,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-    {
-        "n": 30000,
-        "eps": 0.01552237,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-    {
-        "n": 50000,
-        "eps": 0.01250796,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-    {
-        "n": 100000,
-        "eps": 0.00930454,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-    {
-        "n": 300000,
-        "eps": 0.00578709,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-    {
-        "n": 700000,
-        "eps": 0.00399516,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-]
+# experiments =
 """
     {
         "n": 1000000,
@@ -67,18 +26,21 @@ experiments = [
     },
 ]"""
 
-NUM_TRIALS = 4
+NUM_TRIALS = 12
 
 
-def run_trial(seed):
+def run_trial(experiments, seed):
+    LOGGER.info(f"Running trial with seed='{seed}'")
     rng = np.random.default_rng(seed=seed)
 
     data, labels = pl.datasets.one_circle.generate(
         center=np.array([0, 0]), r=1, size=1000000, rng=rng,
     )
     # Add two label points at the beginning of the data set
-    data[0] = np.array([[-2 / 3 * 1, 0]])
-    data[1] = np.array([[2 / 3 * 1, 0]])
+
+    label_locations = experiments[0]["label_locations"]
+    data[0] = label_locations[0]
+    data[1] = label_locations[1]
     labels[0] = 0
     labels[1] = 1
 
@@ -95,20 +57,27 @@ def run_trial(seed):
             dataset, experiment, scale, tol=1e-8,
         )
 
-        result = pd.DataFrame(columns=["x", "y", "z"])
-        result["x"] = dataset.data[indices_largest_component, 0]
-        result["y"] = dataset.data[indices_largest_component, 1]
-        result["z"] = solution
+        for s in solution:
+            result = pd.DataFrame(columns=["x", "y", "z"])
+            result["x"] = dataset.data[indices_largest_component, 0]
+            result["y"] = dataset.data[indices_largest_component, 1]
+            result["z"] = s["solution"]
 
-        trial_result.append({"seed": seed, "solution": result})
+            subresult = copy.deepcopy(experiment)
+            subresult["bump"] = s["bump"]
+            subresult["seed"] = seed
+            subresult["solution"] = result
+            trial_result.append(subresult)
     return trial_result
 
 
 if __name__ == "__main__":
+    experiments = storage.load_experiments("one_circle", "examples/experiments")
+
+    func = partial(run_trial, experiments)
     pool = multiprocessing.Pool(4)
-    trial_results = pool.map(run_trial, range(NUM_TRIALS))
+    trial_results = pool.map(func, range(NUM_TRIALS))
+    # trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+    results = [x for flatten in trial_results for x in flatten]
 
-    for i, experiment in enumerate(experiments):
-        experiment["results"] = [trial[i] for trial in trial_results]
-
-    storage.save_experiments(experiments, name="one_circle", folder="results")
+    storage.save_results(results, name="one_circle", folder="results")

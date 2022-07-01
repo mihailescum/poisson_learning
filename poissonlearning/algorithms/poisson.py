@@ -270,6 +270,7 @@ class Poisson(gl.ssl.ssl):
 
         if self.normalization == "combinatorial":
             if self.preconditioner is None:
+                logger.info("CG - Constructing ILU preconditioner")
                 self.preconditioner = splinalg.spilu(self.L.tocsc())
 
             u = numerics.conjgrad(

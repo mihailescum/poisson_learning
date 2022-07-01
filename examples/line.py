@@ -55,10 +55,10 @@ def run_trial(experiments, seed):
 
 # Run experiments
 if __name__ == "__main__":
-    # pool = multiprocessing.Pool(2)
     experiments = storage.load_experiments("line", "examples/experiments")
 
     func = partial(run_trial, experiments)
+    # pool = multiprocessing.Pool(2)
     # trial_results = pool.map(func, range(NUM_TRIALS))
     trial_results = [func(seed) for seed in range(NUM_TRIALS)]
     results = [x for flatten in trial_results for x in flatten]

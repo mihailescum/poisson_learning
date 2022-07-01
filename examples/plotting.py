@@ -33,6 +33,21 @@ def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
     ax.plot_trisurf(t, z_masked_infty, cmap="viridis")
 
 
+def plot_graph_function_scatter(ax, data, z, dist, max_dist):
+    ax.view_init(elev=10, azim=-90)
+
+    xs = data[:, 0]
+    ys = data[:, 1]
+
+    # Remove values where `z` is infinity for plotting purposes
+    mask_z = np.isfinite(z)
+    xs = xs[mask_z]
+    ys = ys[mask_z]
+    z = z[mask_z]
+
+    ax.scatter(xs, ys, z, s=3, c=z, cmap="viridis")
+
+
 LOGGER
 
 

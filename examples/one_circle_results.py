@@ -28,30 +28,23 @@ def compute_analytic_solution(xy, z1, z2):
 
 def compute_errors(experiments):
     for experiment in experiments:
-        for result in experiment["results"]:
-            solution = result["solution"]
-            xy = solution[["x", "y"]].to_numpy()
-            z = solution["z"].to_numpy()
+        solution = experiment["solution"]
+        xy = solution[["x", "y"]].to_numpy()
+        z = solution["z"].to_numpy()
 
-            z1 = xy[experiment["train_indices"][0]]
-            z2 = xy[experiment["train_indices"][1]]
-            analytic = compute_analytic_solution(xy, z1, z2)
+        z1 = experiment["label_locations"][0]
+        z2 = experiment["label_locations"][1]
+        analytic = compute_analytic_solution(xy, z1, z2)
 
-            mask_infty = np.isfinite(analytic)
+        mask_infty = np.isfinite(analytic)
 
-            error_L1 = np.abs(z[mask_infty] - analytic[mask_infty]).mean()
-            result["err_L1"] = error_L1
-
-    for experiment in experiments:
-        L1_errors = [r["err_L1"] for r in experiment["results"]]
-        experiment["err_mean"] = np.mean(L1_errors)
-        experiment["err_upper"] = np.max(L1_errors) - experiment["err_mean"]
-        experiment["err_lower"] = experiment["err_mean"] - np.min(L1_errors)
+        error_L1 = np.abs(z[mask_infty] - analytic[mask_infty]).mean()
+        experiment["error_L1"] = error_L1
 
 
 if __name__ == "__main__":
     LOGGER.info("Loading experiments")
-    experiments = storage.load_experiments(name="one_circle", folder="results")
+    experiments = storage.load_results(name="one_circle", folder="results")
 
     # Compute errors
     LOGGER.info("Computing errors...")
@@ -65,7 +58,7 @@ if __name__ == "__main__":
     ex_plot = list(
         filter(lambda x: x["n"] == n and x["bump"] == bump_width, experiments,)
     )[0]
-    solution_plot = ex_plot["results"][0]["solution"]
+    solution_plot = ex_plot["solution"]
     sample = solution_plot.sample(NUM_PLOTTING_POINTS, random_state=1)
 
     xy = sample[["x", "y"]].to_numpy()
@@ -73,19 +66,18 @@ if __name__ == "__main__":
 
     fig_results = plt.figure()
     ax_solution = fig_results.add_subplot(1, 2, 1, projection="3d")
-    plotting.plot_graph_function_with_triangulation(
+    plotting.plot_graph_function_scatter(
         ax_solution, xy, sample["z"].to_numpy(), dist=dist, max_dist=0.1,
     )
-    ax_solution.set_title(f"Computed discrete solution; n: {n}; RHS: {bump_width}")
 
-    z1 = solution_plot[["x", "y"]].iloc[ex_plot["train_indices"][0]].to_numpy()
-    z2 = solution_plot[["x", "y"]].iloc[ex_plot["train_indices"][1]].to_numpy()
+    z1 = ex_plot["label_locations"][0]
+    z2 = ex_plot["label_locations"][1]
     analytic = compute_analytic_solution(xy, z1, z2)
     ax_analytic = fig_results.add_subplot(1, 2, 2, projection="3d")
     plotting.plot_graph_function_with_triangulation(
         ax_analytic, xy, analytic, dist=dist, max_dist=0.1,
     )
-    ax_analytic.set_title(f"Analytic solution to continuum problem")
+    fig_results.suptitle(f"Discrete solution [n={n}] vs analytic solution")
 
     # Plot errors
     ex_error = {
@@ -96,10 +88,25 @@ if __name__ == "__main__":
         )
         for kernel in ["gaussian"]
     }
+
+    n_error = sorted(list(set([e["n"] for e in list(ex_error.values())[0]])))
+    error = {kernel: {} for kernel in ex_error.keys()}
+    for kernel, ex_error_kernel in ex_error.items():
+        for n in n_error:
+            ex = list(filter(lambda x: x["n"] == n, ex_error_kernel))
+            error[kernel][n] = {}
+            error[kernel][n]["mean"] = np.mean([e["error_L1"] for e in ex])
+            error[kernel][n]["max"] = np.max([e["error_L1"] for e in ex])
+            error[kernel][n]["min"] = np.min([e["error_L1"] for e in ex])
+
     fig_error, ax_error = plt.subplots(1, 1)
-    plotting.error_plot(ex_error, ax_error, fit="polynomial")
+    plotting.error_plot(error, ax_error, fit="polynomial")
     ax_error.set_title(f"L1 Error compared with RHS {bump_width} to analytic solution")
     ax_error.legend()
+
+    if SAVE_PLOTS:
+        fig_results.savefig("plots/one_circle_convergence.png")
+        fig_error.savefig("plots/one_circle_error.png")
 
     if SHOW_PLOTS:
         plt.show()

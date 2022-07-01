@@ -53,10 +53,10 @@ Convenience functions for computing the (log) determinant of the matrix that has
 
     A = A.tocsc()
 
-    logger.info("CG - Constructing preconditioner")
     if isinstance(preconditioner, splinalg.SuperLU):
         M = preconditioner
     elif preconditioner == "diagonal":
+        logger.info("CG - Constructing diagonal preconditioner")
         M = A.diagonal()
         M[(M >= 0) & (M < 1e-10)] = 1e-10
         M[(M < 0) & (M > -1e-10)] = -1e-10
@@ -64,6 +64,7 @@ Convenience functions for computing the (log) determinant of the matrix that has
 
         Minv = np.tile(Minv, (2, 1)).T
     elif preconditioner == "ilu":
+        logger.info("CG - Constructing ILU preconditioner")
         M = splinalg.spilu(A)
 
     r = b - A @ x
