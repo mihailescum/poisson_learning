@@ -11,8 +11,19 @@ import logging
 LOGGER = logging.getLogger(__name__)
 
 
+def setup(latex=False):
+    plt.rc("axes", labelsize="xx-large", titlesize="xx-large")
+    plt.rc("xtick", labelsize="large")
+    plt.rc("ytick", labelsize="large")
+    plt.rc("legend", fontsize="x-large")
+
+    if latex:
+        plt.rc("text", usetex=True)
+        plt.rc("text.latex", preamble=r"\usepackage{amsmath}")
+
+
 def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
-    ax.view_init(elev=10, azim=-90)
+    ax.view_init(elev=30, azim=-90)
 
     t = mtri.Triangulation(data[:, 0], data[:, 1])
     xind, yind, zind = t.triangles.T
@@ -34,7 +45,7 @@ def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
 
 
 def plot_graph_function_scatter(ax, data, z, dist, max_dist):
-    ax.view_init(elev=10, azim=-90)
+    ax.view_init(elev=30, azim=-90)
 
     xs = data[:, 0]
     ys = data[:, 1]
@@ -45,10 +56,7 @@ def plot_graph_function_scatter(ax, data, z, dist, max_dist):
     ys = ys[mask_z]
     z = z[mask_z]
 
-    ax.scatter(xs, ys, z, s=3, c=z, cmap="viridis")
-
-
-LOGGER
+    ax.scatter(xs, ys, z, s=3, c=z, cmap="viridis", alpha=0.5)
 
 
 def plot_data_with_labels(ax, data, labels):
@@ -59,8 +67,8 @@ def plot_data_with_labels(ax, data, labels):
 
 
 def get_plot_colors(n):
-    # cmap = plt.get_cmap("Dark2")
-    cmap = plt.get_cmap("binary")
+    cmap = plt.get_cmap("Dark2")
+    # cmap = plt.get_cmap("binary")
     cNorm = colors.Normalize(vmin=-(n - 1) * 0.3 * 2, vmax=n - 1)
     scalarMap = cmx.ScalarMappable(norm=cNorm, cmap=cmap)
     result = [scalarMap.to_rgba(i) for i in range(n)]
@@ -72,7 +80,7 @@ def get_linestyles():
     styles = [
         "solid",
         "dashed",
-        "dotted",
+        (0, (1, 1)),  # dotted
         "dashdot",
         (0, (3, 1, 1, 1, 1, 1)),  # densely dashdotdotted
         (0, (5, 5)),  # loosely dashed
@@ -94,9 +102,17 @@ def error_plot(
         lower_error = [value[n]["mean"] - value[n]["min"] for n in x]
         upper_error = [value[n]["max"] - value[n]["mean"] for n in x]
 
-        ax.errorbar(
-            x, y, yerr=[lower_error, upper_error], label=label, ls=ls, c="black",
+        eb = ax.errorbar(
+            x,
+            y,
+            yerr=[lower_error, upper_error],
+            label="errors",
+            ls=ls,
+            c="black",
+            capsize=5,
         )
+        eb[-1][0].set_linestyle("--")
+
         # Fit exponential error curve
         def _func_exp(X, a, c):
             return a * np.exp(-c * X)
@@ -104,26 +120,23 @@ def error_plot(
         def _func_polynomial(X, a, n):
             return a * (X ** (-n))
 
+        xplot = np.linspace(np.min(x), np.max(x), 1000)
         if fit == "exponential":
             popt, _ = scipy.optimize.curve_fit(_func_exp, x, y, p0=(1, 1e-5))
-
-            xplot = np.linspace(np.min(x), np.max(x), 1000)
             yplot = _func_exp(xplot, *popt)
-            ax.plot(xplot, yplot, c="red", ls=ls, label=f"{label} (exponential fit)")
-            LOGGER.info(f"Fitted parameters: {popt}")
         elif fit == "polynomial":
             popt, _ = scipy.optimize.curve_fit(_func_polynomial, x, y, p0=(1, 1))
-
-            xplot = np.linspace(np.min(x), np.max(x), 1000)
             yplot = _func_polynomial(xplot, *popt)
-            ax.plot(xplot, yplot, c="red", ls=ls, label=f"{label} (polynomial fit)")
-            LOGGER.info(f"Fitted parameters: {popt}")
+
+        LOGGER.info(f"Fitted parameters: {popt}")
+        ax.plot(xplot, yplot, c="red", ls=ls, label=f"{fit} fit")
 
     ax.grid(linestyle="dashed")
 
 
-def results_1D(experiments, ax, truth=None, num_plotting_points=5000):
-    colors = get_plot_colors(n=len(experiments))
+def results_1D(experiments, ax, truth=None, num_plotting_points=5000, colors=None):
+    if colors is None:
+        colors = get_plot_colors(n=len(experiments))
     linestyles = get_linestyles()
 
     if truth is not None:

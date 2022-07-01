@@ -5,6 +5,7 @@ import logging
 
 import matplotlib.pyplot as plt
 
+
 import poissonlearning as pl
 
 import storage
@@ -13,7 +14,9 @@ import plotting
 LOGGER = logging.getLogger(name=__name__)
 logging.basicConfig(level="INFO")
 
-SAVE_PLOTS = True
+plotting.setup(latex=True)
+
+SAVE_PLOTS = False
 SHOW_PLOTS = True
 NUM_PLOTTING_POINTS = 5000
 
@@ -77,7 +80,8 @@ if __name__ == "__main__":
     plotting.plot_graph_function_with_triangulation(
         ax_analytic, xy, analytic, dist=dist, max_dist=0.1,
     )
-    fig_results.suptitle(f"Discrete solution [n={n}] vs analytic solution")
+    # fig_results.suptitle(f"Discrete solution [n={n}] vs analytic solution")
+    fig_results.tight_layout()
 
     # Plot errors
     ex_error = {
@@ -101,12 +105,15 @@ if __name__ == "__main__":
 
     fig_error, ax_error = plt.subplots(1, 1)
     plotting.error_plot(error, ax_error, fit="polynomial")
-    ax_error.set_title(f"L1 Error compared with RHS {bump_width} to analytic solution")
+    # ax_error.set_title(f"L1 Error compared with RHS {bump_width} to analytic solution")
     ax_error.legend()
+    ax_error.set_xlabel(r"$n$")
+    ax_error.set_ylabel(r"$\lVert u_n - u \rVert_{L^1 \left(B_1 \right)}$")
+    fig_error.tight_layout()
 
     if SAVE_PLOTS:
-        fig_results.savefig("plots/one_circle_convergence.png")
-        fig_error.savefig("plots/one_circle_error.png")
+        fig_results.savefig("plots/one_circle_convergence.svg", bbox_inches="tight")
+        fig_error.savefig("plots/one_circle_error.svg", bbox_inches="tight")
 
     if SHOW_PLOTS:
         plt.show()
