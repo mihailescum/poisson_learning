@@ -31,13 +31,10 @@ def run_trial(experiments, seed):
     for experiment in experiments:
         n = experiment["n"]
         dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
-        d = dataset.data.shape[1]
 
-        sigma = utils.get_normalization_constant(experiment["kernel"], d, p=2)
         rho2 = 1  # Density of the probability distribution
-        scale = 0.5 * sigma * rho2 * experiment["eps"] ** 2 * n ** 2
         solution, indices_largest_component = utils.run_experiment_poisson(
-            dataset, experiment, scale, tol=1e-8,
+            dataset, experiment, rho2=rho2, tol=1e-8,
         )
 
         for s in solution:
@@ -47,6 +44,7 @@ def run_trial(experiments, seed):
 
             subresult = copy.deepcopy(experiment)
             subresult["bump"] = s["bump"]
+            subresult["eps"] = s["eps"]
             subresult["seed"] = seed
             subresult["solution"] = result
             trial_result.append(subresult)

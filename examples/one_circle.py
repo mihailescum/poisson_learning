@@ -13,20 +13,7 @@ import storage
 LOGGER = logging.getLogger("ex.one_circle")
 logging.basicConfig(level="INFO")
 
-
-# `n` will be overwritten with the number of nodes from the largest connected component
-# experiments =
-"""
-    {
-        "n": 1000000,
-        "eps": 0.00341476,
-        "kernel": "gaussian",
-        "train_indices": [0, 1],
-        "bump": "dirac",
-    },
-]"""
-
-NUM_TRIALS = 12
+NUM_TRIALS = 4
 
 
 def run_trial(experiments, seed):
@@ -48,16 +35,15 @@ def run_trial(experiments, seed):
     for experiment in experiments:
         n = experiment["n"]
         dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
-        d = dataset.data.shape[1]
 
-        sigma = utils.get_normalization_constant(experiment["kernel"], d)
         rho2 = 1.0 / (np.pi * np.pi)  # Density of the probability distribution
-        scale = 0.5 * sigma * rho2 * experiment["eps"] ** 2 * n ** 2
-        solution, indices_largest_component = utils.run_experiment_poisson(
-            dataset, experiment, scale, tol=1e-8,
+        solution = utils.run_experiment_poisson(
+            dataset, experiment, rho2=rho2, tol=1e-8,
         )
 
         for s in solution:
+            indices_largest_component = s["largest_component"]
+
             result = pd.DataFrame(columns=["x", "y", "z"])
             result["x"] = dataset.data[indices_largest_component, 0]
             result["y"] = dataset.data[indices_largest_component, 1]
@@ -65,6 +51,7 @@ def run_trial(experiments, seed):
 
             subresult = copy.deepcopy(experiment)
             subresult["bump"] = s["bump"]
+            subresult["eps"] = s["eps"]
             subresult["seed"] = seed
             subresult["solution"] = result
             trial_result.append(subresult)

@@ -12,7 +12,7 @@ import logging
 
 logging.basicConfig(level="INFO")
 
-NUM_TRAINING_POINTS = 4000
+NUM_TRAINING_POINTS = 3000
 
 NUM_PLOTTING_POINTS = 2000
 LABEL_LOCATIONS = np.array([[0.4], [0.8]])
@@ -98,7 +98,7 @@ poisson = pl.algorithms.Poisson(
     normalization="combinatorial",
     spectral_cutoff=150,
     tol=1e-6,
-    max_iter=200,
+    max_iter=500,
     rhs=rhs,
 )
 solution_homotopy = poisson.fit(train_ind, train_labels)[1]

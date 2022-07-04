@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse.linalg as splinalg
 import logging
 import copy
 
@@ -21,23 +22,28 @@ def estimate_epsilon(n, d):
     return epsilon
 
 
-def build_weight_matrix(dataset, experiment, normalize=True):
+def build_weight_matrix(dataset, experiment, eps=None):
     LOGGER.info("Creating weight matrix...")
     d = dataset.data.shape[1]
 
+    if eps is None:
+        eps = experiment["eps"]
+
     W = pl.algorithms.epsilon_ball(
-        data=dataset.data, epsilon=experiment["eps"], kernel=experiment["kernel"],
+        data=dataset.data, epsilon=eps, kernel=experiment["kernel"],
     )
 
     # Remove sigularities by only keeping the largest connected component
     G = gl.graph(W)
-    Grestricted, indices_largest_component = G.largest_connected_component()
-    W = Grestricted.weight_matrix
+    return G
 
-    if normalize:
-        W *= experiment["eps"] ** (-d)
 
-    return W, indices_largest_component
+def construct_ilu_preconditioner(G):
+    LOGGER.info("Constructing ILU preconditioner")
+    L = G.laplacian(normalization="combinatorial").tocsr()
+
+    preconditioner = splinalg.spilu(L.tocsc())
+    return preconditioner
 
 
 def get_normalization_constant(kernel, d, p=2):
@@ -75,9 +81,7 @@ def get_rhs(dataset, train_ind, bump):
     return rhs
 
 
-def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
-    dataset = copy.deepcopy(dataset)
-
+def run_experiment_poisson(dataset, experiment, rho2=1, tol=1e-3, max_iter=1e3):
     LOGGER.info(
         "Experiment: {}".format({k: v for k, v in experiment.items() if k != "results"})
     )
@@ -85,30 +89,54 @@ def run_experiment_poisson(dataset, experiment, scale, tol=1e-3, max_iter=1e3):
     train_ind = np.arange(len(label_locations))
     train_labels = dataset.labels[train_ind]
 
-    W, indices_largest_component = build_weight_matrix(dataset, experiment)
-    dataset.data = dataset.data[indices_largest_component]
-    dataset.labels = dataset.labels[indices_largest_component]
+    epslist = experiment["eps"]
+    if not isinstance(epslist, list):
+        epslist = [epslist]
 
     bumps = experiment["bump"]
     if not isinstance(bumps, list):
         bumps = [bumps]
 
     solution = []
-    for bump in bumps:
-        rhs = get_rhs(dataset, train_ind, bump)
+    for eps in epslist:
+        dataset_local = copy.deepcopy(dataset)
+        n, d = dataset.data.shape
+        sigma = get_normalization_constant(experiment["kernel"], d)
 
-        LOGGER.info("Solving Poisson problem...")
-        poisson = pl.algorithms.Poisson(
-            W,
-            p=1,
-            scale=scale,
-            solver="conjugate_gradient",
-            normalization="combinatorial",
-            tol=tol,
-            max_iter=max_iter,
-            rhs=rhs,
-        )
-        fit = poisson.fit(train_ind, train_labels)[:, 0]
-        solution.append({"bump": bump, "solution": fit})
+        G = build_weight_matrix(dataset, experiment, eps=eps)
+        G, indices_largest_component = G.largest_connected_component()
+        W = G.weight_matrix
+        W *= eps ** (-d)
 
-    return solution, indices_largest_component
+        dataset_local.data = dataset.data[indices_largest_component]
+        dataset_local.labels = dataset.labels[indices_largest_component]
+
+        preconditioner = construct_ilu_preconditioner(G)
+
+        for bump in bumps:
+            rhs = get_rhs(dataset_local, train_ind, bump)
+
+            LOGGER.info("Solving Poisson problem...")
+            scale = 0.5 * sigma * rho2 * eps ** 2 * n ** 2
+            poisson = pl.algorithms.Poisson(
+                W,
+                p=1,
+                scale=scale,
+                solver="conjugate_gradient",
+                normalization="combinatorial",
+                tol=tol,
+                max_iter=max_iter,
+                rhs=rhs,
+                preconditioner=preconditioner,
+            )
+            fit = poisson.fit(train_ind, train_labels)[:, 0]
+            solution.append(
+                {
+                    "bump": bump,
+                    "eps": eps,
+                    "solution": fit,
+                    "largest_component": indices_largest_component,
+                }
+            )
+
+    return solution

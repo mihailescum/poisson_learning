@@ -34,6 +34,7 @@ class Poisson(gl.ssl.ssl):
         spectral_cutoff=10,
         homotopy_steps=None,
         homotopy_start=None,
+        preconditioner=None,
     ):
         """Poisson Learning
         ===================
@@ -123,7 +124,7 @@ class Poisson(gl.ssl.ssl):
         self.spectral_cutoff = spectral_cutoff
         self.homotopy_steps = homotopy_steps
         self.homotopy_start = homotopy_start
-        self.preconditioner = None
+        self.preconditioner = preconditioner
         self.L = None
         self.G = None
         self.W = None
@@ -218,7 +219,7 @@ class Poisson(gl.ssl.ssl):
 
         # Use spectral solver
         elif self.solver == "spectral":
-            vals, vecs = G.eigen_decomp(
+            vals, vecs = self.G.eigen_decomp(
                 normalization=self.normalization, k=self.spectral_cutoff + 1
             )
             V = vecs[:, 1:]
@@ -229,7 +230,9 @@ class Poisson(gl.ssl.ssl):
             u = V @ (L @ (V.T @ source))
         elif self.solver == "variational":
             if self.homotopy_start is None:
-                u = self._fit_cg(G, source)[:, 0]  # Initialize with solution for p=2
+                u = self._fit_cg(self.G, source)[
+                    :, 0
+                ]  # Initialize with solution for p=2
             else:
                 u = self.homotopy_start.copy()
 
@@ -269,10 +272,6 @@ class Poisson(gl.ssl.ssl):
             self.L = G.laplacian(normalization=self.normalization).tocsr()
 
         if self.normalization == "combinatorial":
-            if self.preconditioner is None:
-                logger.info("CG - Constructing ILU preconditioner")
-                self.preconditioner = splinalg.spilu(self.L.tocsc())
-
             u = numerics.conjgrad(
                 self.L,
                 source,
@@ -332,7 +331,7 @@ class Poisson(gl.ssl.ssl):
             L = D - A
 
             Lf = numerics.conjgrad(
-                L, source, preconditioner="ilu", tol=1e-8, max_iter=self.max_iter,
+                L, source, preconditioner="ilu", tol=1e-10, max_iter=self.max_iter,
             )
             u = 1 / (p - 1) * ((p - 2) * u + Lf)
 

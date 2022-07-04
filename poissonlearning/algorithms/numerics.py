@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as spsparse
 import scipy.sparse.linalg as splinalg
 
 import logging
