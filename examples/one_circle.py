@@ -13,7 +13,8 @@ import storage
 LOGGER = logging.getLogger("ex.one_circle")
 logging.basicConfig(level="INFO")
 
-NUM_TRIALS = 4
+NUM_TRIALS = 2
+NUM_THREADS = 2
 
 
 def run_trial(experiments, seed):
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     experiments = storage.load_experiments("one_circle", "examples/experiments")
 
     func = partial(run_trial, experiments)
-    pool = multiprocessing.Pool(4)
+    pool = multiprocessing.Pool(NUM_THREADS)
     trial_results = pool.map(func, range(NUM_TRIALS))
     # trial_results = [func(seed) for seed in range(NUM_TRIALS)]
     results = [x for flatten in trial_results for x in flatten]

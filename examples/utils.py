@@ -99,6 +99,7 @@ def run_experiment_poisson(dataset, experiment, rho2=1, tol=1e-3, max_iter=1e3):
 
     solution = []
     for eps in epslist:
+        LOGGER.info(f"Using eps={eps}")
         dataset_local = copy.deepcopy(dataset)
         n, d = dataset.data.shape
         sigma = get_normalization_constant(experiment["kernel"], d)

@@ -90,7 +90,7 @@ def get_linestyles():
 
 
 def error_plot(
-    errors, ax, fit=None,
+    errors, ax, c="black", fit=None,
 ):
     linestyles = get_linestyles()
     for ls, (label, value) in zip(linestyles, errors.items()):
@@ -108,7 +108,7 @@ def error_plot(
             yerr=[lower_error, upper_error],
             label="errors",
             ls=ls,
-            c="black",
+            c=c,
             capsize=5,
         )
         eb[-1][0].set_linestyle("--")
@@ -128,8 +128,9 @@ def error_plot(
             popt, _ = scipy.optimize.curve_fit(_func_polynomial, x, y, p0=(1, 1))
             yplot = _func_polynomial(xplot, *popt)
 
-        LOGGER.info(f"Fitted parameters: {popt}")
-        ax.plot(xplot, yplot, c="red", ls=ls, label=f"{fit} fit")
+        if fit is not None:
+            LOGGER.info(f"Fitted parameters: {popt}")
+            ax.plot(xplot, yplot, c="red", ls=ls, label=f"{fit} fit")
 
     ax.grid(linestyle="dashed")
 
