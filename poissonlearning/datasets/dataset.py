@@ -13,3 +13,8 @@ class Dataset:
         data, labels = gl.datasets.load(dataset, metric)
         result = Dataset(data[:cutoff], labels[:cutoff], metric)
         return result
+
+    def copy(self):
+        return Dataset(
+            data=self.data.copy(), labels=self.labels.copy(), metric=self.metric
+        )

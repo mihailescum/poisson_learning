@@ -22,16 +22,20 @@ def estimate_epsilon(n, d):
     return epsilon
 
 
-def build_weight_matrix(dataset, experiment, eps=None):
+def build_weight_matrix(dataset, experiment, eps=None, n_neighbors=None):
     LOGGER.info("Creating weight matrix...")
     d = dataset.data.shape[1]
 
-    if eps is None:
-        eps = experiment["eps"]
-
-    W = pl.algorithms.epsilon_ball(
-        data=dataset.data, epsilon=eps, kernel=experiment["kernel"],
-    )
+    if eps is not None:
+        W = pl.algorithms.epsilon_ball(
+            data=dataset.data, epsilon=eps, kernel=experiment["kernel"],
+        )
+    elif n_neighbors is not None:
+        W = gl.weightmatrix.knn(
+            data=dataset.data, k=n_neighbors, kernel=experiment["kernel"]
+        )
+    else:
+        raise ValueError("Must specify either `eps` or `n_neighbors`.")
 
     # Remove sigularities by only keeping the largest connected component
     G = gl.graph(W)
@@ -89,55 +93,116 @@ def run_experiment_poisson(dataset, experiment, rho2=1, tol=1e-3, max_iter=1e3):
     train_ind = np.arange(len(label_locations))
     train_labels = dataset.labels[train_ind]
 
-    epslist = experiment["eps"]
-    if not isinstance(epslist, list):
-        epslist = [epslist]
+    bumps = x if isinstance(x := experiment["bump"], list) else [x]
 
-    bumps = experiment["bump"]
-    if not isinstance(bumps, list):
-        bumps = [bumps]
+    if "eps" in experiment:
+        epslist = x if isinstance(x := experiment["eps"], list) else [x]
+    else:
+        epslist = []
+
+    if "n_neighbors" in experiment:
+        n_neighbors_list = (
+            x if isinstance(x := experiment["n_neighbors"], list) else [x]
+        )
+    else:
+        n_neighbors_list = []
 
     solution = []
     for eps in epslist:
-        LOGGER.info(f"Using eps={eps}")
-        dataset_local = copy.deepcopy(dataset)
-        n, d = dataset.data.shape
-        sigma = get_normalization_constant(experiment["kernel"], d)
-
-        G = build_weight_matrix(dataset, experiment, eps=eps)
-        G, indices_largest_component = G.largest_connected_component()
-        W = G.weight_matrix
-        W *= eps ** (-d)
-
-        dataset_local.data = dataset.data[indices_largest_component]
-        dataset_local.labels = dataset.labels[indices_largest_component]
-
-        preconditioner = construct_ilu_preconditioner(G)
-
-        for bump in bumps:
-            rhs = get_rhs(dataset_local, train_ind, bump)
-
-            LOGGER.info("Solving Poisson problem...")
-            scale = 0.5 * sigma * rho2 * eps ** 2 * n ** 2
-            poisson = pl.algorithms.Poisson(
-                W,
-                p=1,
-                scale=scale,
-                solver="conjugate_gradient",
-                normalization="combinatorial",
+        solution.extend(
+            run_experiment_graphconfig(
+                dataset=dataset.copy(),
+                experiment=experiment,
+                train_ind=train_ind,
+                train_labels=train_labels,
+                bumps=bumps,
+                eps=eps,
+                rho2=rho2,
                 tol=tol,
                 max_iter=max_iter,
-                rhs=rhs,
-                preconditioner=preconditioner,
             )
-            fit = poisson.fit(train_ind, train_labels)[:, 0]
-            solution.append(
-                {
-                    "bump": bump,
-                    "eps": eps,
-                    "solution": fit,
-                    "largest_component": indices_largest_component,
-                }
+        )
+
+    for n_neighbors in n_neighbors_list:
+        solution.extend(
+            run_experiment_graphconfig(
+                dataset=dataset.copy(),
+                experiment=experiment,
+                train_ind=train_ind,
+                train_labels=train_labels,
+                bumps=bumps,
+                n_neighbors=n_neighbors,
+                rho2=rho2,
+                tol=tol,
+                max_iter=max_iter,
             )
+        )
 
     return solution
+
+
+def run_experiment_graphconfig(
+    dataset,
+    experiment,
+    bumps,
+    train_ind,
+    train_labels,
+    eps=None,
+    n_neighbors=None,
+    rho2=1,
+    tol=1e-3,
+    max_iter=1e3,
+):
+    LOGGER.info(f"Using eps={eps} and n_neighbors={n_neighbors}")
+    n, d = dataset.data.shape
+
+    G = build_weight_matrix(dataset, experiment, eps=eps, n_neighbors=n_neighbors)
+    G, indices_largest_component = G.largest_connected_component()
+    W = G.weight_matrix
+
+    if eps is not None:
+        W *= eps ** (-d)
+        sigma = get_normalization_constant(experiment["kernel"], d)
+        scale = 0.5 * sigma * rho2 * eps ** 2 * n ** 2
+    elif n_neighbors is not None:
+        scale = None
+    else:
+        raise ValueError("Must specify either `eps` or `n_neighbors`.")
+
+    dataset.data = dataset.data[indices_largest_component]
+    dataset.labels = dataset.labels[indices_largest_component]
+
+    preconditioner = construct_ilu_preconditioner(G)
+
+    result = []
+    for bump in bumps:
+        rhs = get_rhs(dataset, train_ind, bump)
+
+        LOGGER.info("Solving Poisson problem...")
+        poisson = pl.algorithms.Poisson(
+            W,
+            p=1,
+            scale=scale,
+            solver="conjugate_gradient",
+            normalization="combinatorial",
+            tol=tol,
+            max_iter=max_iter,
+            rhs=rhs,
+            preconditioner=preconditioner,
+        )
+        fit = poisson.fit(train_ind, train_labels)[:, 0]
+        item = {
+            "bump": bump,
+            "solution": fit,
+            "largest_component": indices_largest_component,
+        }
+        if eps is not None:
+            item["eps"] = eps
+        elif n_neighbors is not None:
+            item["n_neighbors"] = n_neighbors
+        else:
+            raise ValueError("Must specify either `eps` or `n_neighbors`.")
+
+        result.append(item)
+
+    return result

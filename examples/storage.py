@@ -56,12 +56,16 @@ def save_results(results, name, folder):
     for result in results:
         run = {
             "n": result["n"],
-            "eps": result["eps"],
             "bump": result["bump"],
             "kernel": result["kernel"],
             "label_locations": result["label_locations"],
             "seed": result["seed"],
         }
+        if "eps" in result:
+            run["eps"] = result["eps"]
+        if "n_neighbors" in result:
+            run["n_neighbors"] = result["n_neighbors"]
+
         hash = _compute_run_hash(run)
         run["hash"] = hash
 

@@ -13,8 +13,8 @@ import storage
 LOGGER = logging.getLogger("ex.one_circle")
 logging.basicConfig(level="INFO")
 
-NUM_TRIALS = 2
-NUM_THREADS = 2
+NUM_TRIALS = 1
+NUM_THREADS = 4
 
 
 def run_trial(experiments, seed):
@@ -35,7 +35,7 @@ def run_trial(experiments, seed):
     trial_result = []
     for experiment in experiments:
         n = experiment["n"]
-        dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
+        dataset = pl.datasets.Dataset(data[:n].copy(), labels[:n].copy(), metric="raw")
 
         rho2 = 1.0 / (np.pi * np.pi)  # Density of the probability distribution
         solution = utils.run_experiment_poisson(
@@ -50,12 +50,19 @@ def run_trial(experiments, seed):
             result["y"] = dataset.data[indices_largest_component, 1]
             result["z"] = s["solution"]
 
-            subresult = copy.deepcopy(experiment)
-            subresult["bump"] = s["bump"]
-            subresult["eps"] = s["eps"]
-            subresult["seed"] = seed
-            subresult["solution"] = result
-            trial_result.append(subresult)
+            item = copy.deepcopy(experiment)
+            item["bump"] = s["bump"]
+
+            if "eps" in s:
+                item["eps"] = s["eps"]
+                item.pop("n_neighbors", None)
+            elif "n_neighbors" in s:
+                item["n_neighbors"] = s["n_neighbors"]
+                item.pop("eps", None)
+
+            item["seed"] = seed
+            item["solution"] = result
+            trial_result.append(item)
     return trial_result
 
 
@@ -64,8 +71,8 @@ if __name__ == "__main__":
 
     func = partial(run_trial, experiments)
     pool = multiprocessing.Pool(NUM_THREADS)
-    trial_results = pool.map(func, range(NUM_TRIALS))
-    # trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+    # trial_results = pool.map(func, range(NUM_TRIALS))
+    trial_results = [func(seed) for seed in range(NUM_TRIALS)]
     results = [x for flatten in trial_results for x in flatten]
 
     storage.save_results(results, name="one_circle", folder="results")
