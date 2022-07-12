@@ -24,6 +24,9 @@ def load_experiments(name, folder):
     def _convert_arrays(x):
         if "label_locations" in x:
             x["label_locations"] = np.array(x["label_locations"], dtype="float64")
+        if "p" in x:
+            if isinstance(x["p"], list):
+                x["p"] = np.array(x["p"], dtype="float64")
 
         return x
 
@@ -54,13 +57,19 @@ def save_results(results, name, folder):
 
     experiment_runs = []
     for result in results:
-        run = {
-            "n": result["n"],
-            "bump": result["bump"],
-            "kernel": result["kernel"],
-            "label_locations": result["label_locations"],
-            "seed": result["seed"],
-        }
+        run = {}
+        if "n" in result:
+            run["n"] = result["n"]
+        if "bump" in result:
+            run["bump"] = result["bump"]
+        if "kernel" in result:
+            run["kernel"] = result["kernel"]
+        if "label_locations" in result:
+            run["label_locations"] = result["label_locations"]
+        if "seed" in result:
+            run["seed"] = result["seed"]
+        if "p" in result:
+            run["p"] = result["p"]
         if "eps" in result:
             run["eps"] = result["eps"]
         if "n_neighbors" in result:

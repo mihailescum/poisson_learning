@@ -1,23 +1,21 @@
+from http.client import NON_AUTHORITATIVE_INFORMATION
 import numpy as np
 import pandas as pd
-from scipy.spatial.distance import cdist
-
-import matplotlib.pyplot as plt
+import multiprocessing
+from functools import partial
+import copy
 import logging
 
 import poissonlearning as pl
-import graphlearning as gl
 
-from plotting import plot_graph_function_with_triangulation
+import utils
+import storage
 
-logger = logging.getLogger("ex.one_circle")
-
-NUM_TRAINING_POINTS = [10000]  # , 30000, 50000, 100000, 300000, 700000, 1000000]
-BUMP_WIDTH = "dirac"
-HOMOTOPY_STEPS = [3, 4, 5, 6, 8, 10, 12, 16]
-NUM_PLOTTING_POINTS = 10000
-
+LOGGER = logging.getLogger("ex.one_circle")
 logging.basicConfig(level="INFO")
+
+NUM_TRIALS = 1
+NUM_THREADS = 4
 
 
 def estimate_epsilon(n):
@@ -27,10 +25,76 @@ def estimate_epsilon(n):
     return epsilon
 
 
-results = {}
+def run_trial(experiments, seed):
+    LOGGER.info(f"Running trial with seed='{seed}'")
+    rng = np.random.default_rng(seed=seed)
+
+    data, labels = pl.datasets.one_circle.generate(
+        center=np.array([0, 0]), r=1, size=1000000, rng=rng,
+    )
+    # Add two label points at the beginning of the data set
+
+    label_locations = experiments[0]["label_locations"]
+    data[0] = label_locations[0]
+    data[1] = label_locations[1]
+    labels[0] = 0
+    labels[1] = 1
+
+    trial_result = []
+    for experiment in experiments:
+        n = experiment["n"]
+        dataset = pl.datasets.Dataset(data[:n].copy(), labels[:n].copy(), metric="raw")
+
+        rho2 = 1.0 / (np.pi * np.pi)
+        solution = utils.run_experiment_poisson(
+            dataset, experiment, rho2=rho2, tol=1e-5, max_iter=200,
+        )
+
+        for s in solution:
+            indices_largest_component = s["largest_component"]
+
+            for p, homotopy_solution in s["solution"].items():
+                result = pd.DataFrame(columns=["x", "y", "z"])
+                result["x"] = dataset.data[indices_largest_component, 0]
+                result["y"] = dataset.data[indices_largest_component, 1]
+                result["z"] = homotopy_solution
+
+                item = copy.deepcopy(experiment)
+                item["bump"] = s["bump"]
+                item["p"] = p
+
+                if "eps" in s:
+                    item["eps"] = s["eps"]
+                    item.pop("n_neighbors", None)
+                elif "n_neighbors" in s:
+                    item["n_neighbors"] = s["n_neighbors"]
+                    item.pop("eps", None)
+
+                item["seed"] = seed
+                item["solution"] = result
+                trial_result.append(item)
+
+    return trial_result
+
+
+if __name__ == "__main__":
+    experiments = storage.load_experiments("p_one_circle", "examples/experiments")
+
+    NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
+    func = partial(run_trial, experiments)
+    if NUM_THREADS > 1:
+        pool = multiprocessing.Pool(NUM_THREADS)
+        trial_results = pool.map(func, range(NUM_TRIALS))
+    else:
+        trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+    results = [x for flatten in trial_results for x in flatten]
+
+    storage.save_results(results, name="one_circle", folder="results")
+
+
+""" results = []
 for training_points in NUM_TRAINING_POINTS:
     print(f"\n# training points: {training_points}")
-    results[training_points] = {}
 
     # Load the one_circle dataset
     dataset = pl.datasets.Dataset.load("one_circle", "raw", training_points)
@@ -89,12 +153,21 @@ for training_points in NUM_TRAINING_POINTS:
         scale = 0.5 * sigma * epsilon ** (d + p_homotopy) * n ** 2
         solution_homotopy = scale ** (1 / p_homotopy) * solution_homotopy
 
-        result = pd.DataFrame(columns=["x", "y", "z"])
-        result["x"] = dataset.data[:, 0]
-        result["y"] = dataset.data[:, 1]
-        result["z"] = solution_homotopy
-        results[training_points][p_homotopy] = result
+        solution = pd.DataFrame(columns=["x", "y", "z"])
+        solution["x"] = dataset.data[:, 0]
+        solution["y"] = dataset.data[:, 1]
+        solution["z"] = solution_homotopy
 
+        item = {}
+        item["n"] = training_points
+        item["p"] = p_homotopy
+        item["solution"] = solution
+        item["eps"] = epsilon
+        item["bump"] = BUMP_WIDTH
+        item["label_loations"] = dataset.data[train_ind]
+        results.append(item)
+
+storage.save_results(results, "p_one_circle", "results")
 print("Plotting...")
 
 # Plot solution
@@ -104,8 +177,8 @@ sample_size = NUM_PLOTTING_POINTS
 fig_results = plt.figure()
 for i, p_homotopy in enumerate(results[n], start=1):
     ax_solution = fig_results.add_subplot(
-        int(np.floor(np.sqrt(len(results[n])))),
-        int(np.floor(np.sqrt(len(results[n])))),
+        2,  # int(np.floor(np.sqrt(len(results[n])))),
+        5,  # int(np.floor(np.sqrt(len(results[n])))),
         i,
         projection="3d",
     )
@@ -121,3 +194,4 @@ for i, p_homotopy in enumerate(results[n], start=1):
 
 
 plt.show()
+ """

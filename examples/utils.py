@@ -22,13 +22,13 @@ def estimate_epsilon(n, d):
     return epsilon
 
 
-def build_weight_matrix(dataset, experiment, eps=None, n_neighbors=None):
+def build_weight_matrix(dataset, experiment, eps=None, n_neighbors=None, eta=None):
     LOGGER.info("Creating weight matrix...")
     d = dataset.data.shape[1]
 
     if eps is not None:
         W = pl.algorithms.epsilon_ball(
-            data=dataset.data, epsilon=eps, kernel=experiment["kernel"],
+            data=dataset.data, epsilon=eps, kernel=experiment["kernel"], eta=eta,
         )
     elif n_neighbors is not None:
         W = gl.weightmatrix.knn(
@@ -53,21 +53,52 @@ def construct_ilu_preconditioner(G):
     return preconditioner
 
 
-def get_normalization_constant(kernel, d, p=2):
+def get_normalization_constant(kernel, d, p=[2]):
+    p = np.array(p)
+    result = np.zeros(p.size)
+    for i, p_single in enumerate(p):
+        result[i] = _get_normalization_constant(kernel, d, p_single)
+
+    if result.size == 1:
+        result = result[0]
+
+    return result
+
+
+def _get_normalization_constant(kernel, d, p):
     sigma = None
     if kernel == "uniform":
-        if p == 2:
-            if d == 1:
-                # integrate -1 to 1: t^2 dt
-                sigma = 2 / 3
+        if d == 1:
+            # integrate -1 to 1: t^2 dt
+            sigma = 2 / 3
     elif kernel == "gaussian":
-        if p == 2:
-            if d == 1:
-                # integrate -1 to 1: exp(-4t^2)t^2 dt
-                sigma = 0.10568126
-            elif d == 2:
+        if d == 1:
+            sigma_all = {
+                2: 0.10568,
+                4: 0.035052,
+                8: 0.010583,
+                12: 0.00549624,
+                16: 0.00358198,
+                20: 0.002624,
+                26: 0.00185778,
+                32: 0.00143257,
+            }
+            sigma = sigma_all.get(p, None)
+        elif d == 2:
+            sigma_all = {
                 # integrate B_1(0): exp(-4r^2)(r*cos(t))^2 r dtdr
-                sigma = np.pi * (1 - 5 * np.e ** (-4)) / 32.0
+                2: np.pi * (1 - 5 * np.e ** (-4)) / 32.0,
+                3: 8 / 3 * 0.0175258,
+                4: 3 * np.pi / 4 * 0.011905,
+                5: 32 / 15 * 0.0086642,
+                6: 5 * np.pi / 8 * 0.0066390,
+                8: 35 * np.pi / 64 * 0.0043496,
+                10: 63 * np.pi / 128 * 0.0031475,
+                12: 231 * np.pi / 512 * 0.0024318,
+                16: 1.2339 * 0.00164294,
+                20: 1.1071 * 0.00122844,
+            }
+            sigma = sigma_all.get(p, None)
 
     if sigma is None:
         raise ValueError("Unsupported combination of inputs")
@@ -154,19 +185,30 @@ def run_experiment_graphconfig(
     n_neighbors=None,
     rho2=1,
     tol=1e-3,
-    max_iter=1e3,
+    max_iter=200,
 ):
     LOGGER.info(f"Using eps={eps} and n_neighbors={n_neighbors}")
     n, d = dataset.data.shape
 
-    G = build_weight_matrix(dataset, experiment, eps=eps, n_neighbors=n_neighbors)
+    p_homotopy = experiment.get("p", None)
+    p = 2 if p_homotopy is None else p_homotopy[-1]
+    solver = "conjugate_gradient" if p_homotopy is None else "variational"
+    eta = None if p_homotopy is None else lambda x: np.exp(-x)
+
+    G = build_weight_matrix(
+        dataset, experiment, eps=eps, n_neighbors=n_neighbors, eta=eta
+    )
     G, indices_largest_component = G.largest_connected_component()
     W = G.weight_matrix
 
     if eps is not None:
-        W *= eps ** (-d)
-        sigma = get_normalization_constant(experiment["kernel"], d)
-        scale = 0.5 * sigma * rho2 * eps ** 2 * n ** 2
+        # W *= eps ** (-d)
+        if p_homotopy is None:
+            sigma = get_normalization_constant(experiment["kernel"], d)
+            scale = 0.5 * sigma * rho2 * (eps ** 2) * n ** 2
+        else:
+            sigma = get_normalization_constant(experiment["kernel"], d, p_homotopy)
+            scale = 0.5 * sigma * rho2 * (eps ** p_homotopy) * n ** 2
     elif n_neighbors is not None:
         scale = None
     else:
@@ -184,16 +226,23 @@ def run_experiment_graphconfig(
         LOGGER.info("Solving Poisson problem...")
         poisson = pl.algorithms.Poisson(
             W,
-            p=1,
+            p=(p - 1),
             scale=scale,
-            solver="conjugate_gradient",
+            solver=solver,
             normalization="combinatorial",
             tol=tol,
             max_iter=max_iter,
             rhs=rhs,
             preconditioner=preconditioner,
+            homotopy_steps=p_homotopy,
         )
-        fit = poisson.fit(train_ind, train_labels)[:, 0]
+        fit = poisson.fit(train_ind, train_labels)
+
+        if p_homotopy is None:
+            fit = fit[:, 0]
+        else:
+            fit = fit[1]
+
         item = {
             "bump": bump,
             "solution": fit,

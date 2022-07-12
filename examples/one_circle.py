@@ -69,6 +69,7 @@ def run_trial(experiments, seed):
 if __name__ == "__main__":
     experiments = storage.load_experiments("one_circle", "examples/experiments")
 
+    NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
     func = partial(run_trial, experiments)
     if NUM_THREADS > 1:
         pool = multiprocessing.Pool(NUM_THREADS)
