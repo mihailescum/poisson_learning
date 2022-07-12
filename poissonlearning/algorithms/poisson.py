@@ -288,7 +288,9 @@ class Poisson(gl.ssl.ssl):
             #    )
         elif self.normalization == "normalized":
             D = G.degree_matrix(p=-0.5)
-            u = gl.utils.conjgrad(L, D * source, tol=self.tol, max_iter=self.max_iter)
+            u = gl.utils.conjgrad(
+                self.L, D * source, tol=self.tol, max_iter=self.max_iter
+            )
             u = D * u
         else:
             raise ValueError(

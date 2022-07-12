@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(name="ex.line")
 logging.basicConfig(level="INFO")
 
 
-NUM_TRIALS = 10
+NUM_TRIALS = 1
 
 
 def run_trial(experiments, seed):
@@ -30,24 +30,32 @@ def run_trial(experiments, seed):
     trial_result = []
     for experiment in experiments:
         n = experiment["n"]
-        dataset = pl.datasets.Dataset(data[:n], labels[:n], metric="raw")
+        dataset = pl.datasets.Dataset(data[:n].copy(), labels[:n].copy(), metric="raw")
 
         rho2 = 1  # Density of the probability distribution
-        solution, indices_largest_component = utils.run_experiment_poisson(
-            dataset, experiment, rho2=rho2, tol=1e-8,
+        solution = utils.run_experiment_poisson(
+            dataset, experiment, rho2=rho2, tol=1e-8, max_iter=200,
         )
 
         for s in solution:
+            indices_largest_component = s["largest_component"]
             result = pd.Series(
                 s["solution"], index=dataset.data[indices_largest_component, 0]
             ).sort_index()
 
-            subresult = copy.deepcopy(experiment)
-            subresult["bump"] = s["bump"]
-            subresult["eps"] = s["eps"]
-            subresult["seed"] = seed
-            subresult["solution"] = result
-            trial_result.append(subresult)
+            item = copy.deepcopy(experiment)
+            item["bump"] = s["bump"]
+
+            if "eps" in s:
+                item["eps"] = s["eps"]
+                item.pop("n_neighbors", None)
+            elif "n_neighbors" in s:
+                item["n_neighbors"] = s["n_neighbors"]
+                item.pop("eps", None)
+
+            item["seed"] = seed
+            item["solution"] = result
+            trial_result.append(item)
     return trial_result
 
 

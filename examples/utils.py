@@ -34,6 +34,9 @@ def build_weight_matrix(dataset, experiment, eps=None, n_neighbors=None):
         W = gl.weightmatrix.knn(
             data=dataset.data, k=n_neighbors, kernel=experiment["kernel"]
         )
+        LOGGER.info(
+            f"#Nodes in connected component: {gl.graph(W).largest_connected_component()[1].sum()}"
+        )
     else:
         raise ValueError("Must specify either `eps` or `n_neighbors`.")
 

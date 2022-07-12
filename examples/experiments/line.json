@@ -2,6 +2,10 @@
     {
         "n": 1000,
         "eps": 0.103616329,
+        "n_neighbors": [
+            10,
+            15
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -12,6 +16,10 @@
     {
         "n": 10000,
         "eps": 0.01381551,
+        "n_neighbors": [
+            15,
+            20
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -22,6 +30,10 @@
     {
         "n": 20000,
         "eps": 0.007427616,
+        "n_neighbors": [
+            15,
+            20
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -32,6 +44,10 @@
     {
         "n": 35000,
         "eps": 0.004484187146,
+        "n_neighbors": [
+            15,
+            20
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -42,6 +58,10 @@
     {
         "n": 50000,
         "eps": 0.003245933485,
+        "n_neighbors": [
+            15,
+            20
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -52,6 +72,10 @@
     {
         "n": 70000,
         "eps": 0.0023906251116,
+        "n_neighbors": [
+            20,
+            30
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -62,6 +86,10 @@
     {
         "n": 100000,
         "eps": 0.0017269388197,
+        "n_neighbors": [
+            20,
+            30
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -72,6 +100,10 @@
     {
         "n": 200000,
         "eps": 0.000915455448,
+        "n_neighbors": [
+            30,
+            40
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -82,6 +114,10 @@
     {
         "n": 300000,
         "eps": 0.000630576889,
+        "n_neighbors": [
+            30,
+            40
+        ],
         "bump": "dirac",
         "kernel": "uniform",
         "label_locations": [
@@ -96,7 +132,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -111,7 +147,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -126,7 +162,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -141,7 +177,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -156,7 +192,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -171,7 +207,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -186,7 +222,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -201,7 +237,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [
@@ -216,7 +252,7 @@
             "dirac",
             1e-3,
             1e-2,
-            1e-1
+            2e-2
         ],
         "kernel": "gaussian",
         "label_locations": [

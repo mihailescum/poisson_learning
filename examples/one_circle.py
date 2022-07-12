@@ -13,7 +13,7 @@ import storage
 LOGGER = logging.getLogger("ex.one_circle")
 logging.basicConfig(level="INFO")
 
-NUM_TRIALS = 1
+NUM_TRIALS = 4
 NUM_THREADS = 4
 
 
@@ -39,7 +39,7 @@ def run_trial(experiments, seed):
 
         rho2 = 1.0 / (np.pi * np.pi)  # Density of the probability distribution
         solution = utils.run_experiment_poisson(
-            dataset, experiment, rho2=rho2, tol=1e-8,
+            dataset, experiment, rho2=rho2, tol=1e-8, max_iter=200,
         )
 
         for s in solution:
@@ -70,9 +70,11 @@ if __name__ == "__main__":
     experiments = storage.load_experiments("one_circle", "examples/experiments")
 
     func = partial(run_trial, experiments)
-    pool = multiprocessing.Pool(NUM_THREADS)
-    # trial_results = pool.map(func, range(NUM_TRIALS))
-    trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+    if NUM_THREADS > 1:
+        pool = multiprocessing.Pool(NUM_THREADS)
+        trial_results = pool.map(func, range(NUM_TRIALS))
+    else:
+        trial_results = [func(seed) for seed in range(NUM_TRIALS)]
     results = [x for flatten in trial_results for x in flatten]
 
     storage.save_results(results, name="one_circle", folder="results")

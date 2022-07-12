@@ -4,6 +4,8 @@ import scipy.sparse.linalg as splinalg
 
 import logging
 
+from examples.line import LOGGER
+
 logger = logging.getLogger("pl.numerics")
 
 
@@ -110,6 +112,12 @@ Convenience functions for computing the (log) determinant of the matrix that has
         p = r_tilde + beta * p
 
         err = np.sqrt(np.sum(rsnew))
+        if np.isnan(err):
+            if np.all(np.isclose(rsnew, 0)):
+                err = 0.0
+            else:
+                LOGGER.exception("Residual is NaN!")
+                return x
         rsold = rsnew
         logger.info(f"CG - It: {i}; error: {err}")
 

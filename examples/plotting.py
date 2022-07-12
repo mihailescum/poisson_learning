@@ -45,7 +45,7 @@ def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
 
 
 def plot_graph_function_scatter(ax, data, z, dist, max_dist):
-    ax.view_init(elev=30, azim=-90)
+    ax.view_init(elev=25, azim=-90)
 
     xs = data[:, 0]
     ys = data[:, 1]
@@ -89,9 +89,7 @@ def get_linestyles():
     return styles
 
 
-def error_plot(
-    errors, ax, c="black", fit=None,
-):
+def error_plot(errors, ax, c="black", fit=None, label=None):
     linestyles = get_linestyles()
     for ls, (label, value) in zip(linestyles, errors.items()):
         x = list(value.keys())
@@ -106,7 +104,7 @@ def error_plot(
             x,
             y,
             yerr=[lower_error, upper_error],
-            label="errors",
+            label="errors" if label is None else label,
             ls=ls,
             c=c,
             capsize=5,
