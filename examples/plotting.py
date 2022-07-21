@@ -23,7 +23,7 @@ def setup(latex=False):
 
 
 def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
-    ax.view_init(elev=30, azim=-90)
+    ax.view_init(elev=20, azim=-110)
 
     t = mtri.Triangulation(data[:, 0], data[:, 1])
     xind, yind, zind = t.triangles.T
