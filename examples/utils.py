@@ -22,7 +22,7 @@ def estimate_epsilon(n, d):
     return epsilon
 
 
-def build_weight_matrix(dataset, experiment, eps=None, n_neighbors=None, eta=None):
+def build_graph(dataset, experiment, eps=None, n_neighbors=None, eta=None):
     LOGGER.info("Creating weight matrix...")
     d = dataset.data.shape[1]
 
@@ -42,7 +42,8 @@ def build_weight_matrix(dataset, experiment, eps=None, n_neighbors=None, eta=Non
 
     # Remove sigularities by only keeping the largest connected component
     G = gl.graph(W)
-    return G
+    G, indices_largest_component = G.largest_connected_component()
+    return G, indices_largest_component
 
 
 def construct_ilu_preconditioner(G):
@@ -131,7 +132,7 @@ def get_rhs(dataset, train_ind, bump):
     return rhs
 
 
-def run_experiment_poisson(dataset, experiment, rho2=1, tol=1e-3, max_iter=1e3):
+def run_experiment_poisson(dataset, experiment, rho2=1):
     LOGGER.info(
         "Experiment: {}".format({k: v for k, v in experiment.items() if k != "results"})
     )
@@ -164,8 +165,6 @@ def run_experiment_poisson(dataset, experiment, rho2=1, tol=1e-3, max_iter=1e3):
                 bumps=bumps,
                 eps=eps,
                 rho2=rho2,
-                tol=tol,
-                max_iter=max_iter,
             )
         )
 
@@ -179,8 +178,6 @@ def run_experiment_poisson(dataset, experiment, rho2=1, tol=1e-3, max_iter=1e3):
                 bumps=bumps,
                 n_neighbors=n_neighbors,
                 rho2=rho2,
-                tol=tol,
-                max_iter=max_iter,
             )
         )
 
@@ -196,8 +193,6 @@ def run_experiment_graphconfig(
     eps=None,
     n_neighbors=None,
     rho2=1,
-    tol=1e-3,
-    max_iter=200,
 ):
     LOGGER.info(f"Using eps={eps} and n_neighbors={n_neighbors}")
     n, d = dataset.data.shape
@@ -207,14 +202,13 @@ def run_experiment_graphconfig(
     solver = "conjugate_gradient" if p_homotopy is None else "variational"
     eta = None if p_homotopy is None else lambda x: np.exp(-x)
 
-    G = build_weight_matrix(
+    G, indices_largest_component = build_graph(
         dataset, experiment, eps=eps, n_neighbors=n_neighbors, eta=eta
     )
-    G, indices_largest_component = G.largest_connected_component()
     W = G.weight_matrix
 
     if eps is not None:
-        # W *= eps ** (-d)
+        W *= eps ** (-d)
         if p_homotopy is None:
             sigma = get_normalization_constant(experiment["kernel"], d)
             scale = 0.5 * sigma * rho2 * (eps ** 2) * n ** 2
@@ -229,7 +223,7 @@ def run_experiment_graphconfig(
     dataset.data = dataset.data[indices_largest_component]
     dataset.labels = dataset.labels[indices_largest_component]
 
-    preconditioner = construct_ilu_preconditioner(G)
+    preconditioner = construct_ilu_preconditioner(W)
 
     result = []
     for bump in bumps:
@@ -242,8 +236,8 @@ def run_experiment_graphconfig(
             scale=scale,
             solver=solver,
             normalization="combinatorial",
-            tol=tol,
-            max_iter=max_iter,
+            tol=experiment["tol"],
+            max_iter=experiment["max_iter"],
             rhs=rhs,
             preconditioner=preconditioner,
             homotopy_steps=p_homotopy,
@@ -259,6 +253,8 @@ def run_experiment_graphconfig(
             "bump": bump,
             "solution": fit,
             "largest_component": indices_largest_component,
+            "tol": experiment["tol"],
+            "max_iter": experiment["max_iter"],
         }
         if eps is not None:
             item["eps"] = eps

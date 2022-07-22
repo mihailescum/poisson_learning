@@ -1,4 +1,3 @@
-from http.client import NON_AUTHORITATIVE_INFORMATION
 import numpy as np
 import pandas as pd
 import multiprocessing
@@ -58,7 +57,7 @@ def run_trial(experiments, seed):
                 result = pd.DataFrame(columns=["x", "y", "z"])
                 result["x"] = dataset.data[indices_largest_component, 0]
                 result["y"] = dataset.data[indices_largest_component, 1]
-                result["z"] = homotopy_solution
+                result["z"] = homotopy_solution[:, 0]
 
                 item = copy.deepcopy(experiment)
                 item["bump"] = s["bump"]

@@ -27,6 +27,9 @@ def load_experiments(name, folder):
         if "p" in x:
             if isinstance(x["p"], list):
                 x["p"] = np.array(x["p"], dtype="float64")
+        if "labels_per_class" in x:
+            if isinstance(x["labels_per_class"], list):
+                x["labels_per_class"] = np.array(x["labels_per_class"], dtype="int64")
 
         return x
 
@@ -74,6 +77,12 @@ def save_results(results, name, folder):
             run["eps"] = result["eps"]
         if "n_neighbors" in result:
             run["n_neighbors"] = result["n_neighbors"]
+        if "labels_per_class" in result:
+            run["labels_per_class"] = result["labels_per_class"]
+        if "tol" in result:
+            run["tol"] = result["tol"]
+        if "max_iter" in result:
+            run["max_iter"] = result["max_iter"]
 
         hash = _compute_run_hash(run)
         run["hash"] = hash

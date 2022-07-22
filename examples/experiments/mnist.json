@@ -1,0 +1,25 @@
+[
+    {
+        "n": 5000,
+        "p": [
+            2,
+            3
+        ],
+        "n_neighbors": 10,
+        "labels_per_class": 5,
+        "kernel": "gaussian",
+        "tol": 1e-2,
+        "max_iter": 200
+    },
+    {
+        "n": 5000,
+        "p": [
+            2
+        ],
+        "n_neighbors": 10,
+        "labels_per_class": 1,
+        "kernel": "gaussian",
+        "tol": 1e-2,
+        "max_iter": 200
+    }
+]
