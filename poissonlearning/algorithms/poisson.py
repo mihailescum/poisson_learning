@@ -243,7 +243,7 @@ class Poisson(gl.ssl.ssl):
                 else:
                     homotopy_steps = [self.p + 1]
 
-            additional_output = {2: u}
+            additional_output = {}
             for p_homotopy in homotopy_steps:
                 num_classes = source.shape[1]
                 if num_classes == 2:  # Binary classification
@@ -268,7 +268,20 @@ class Poisson(gl.ssl.ssl):
 
         # Scale solution
         if self.scale is not None:
-            u = self.scale ** (1 / self.p) * u
+            scale = self.scale
+            if isinstance(scale, float):
+                scale = np.array([scale])
+
+            u = self.scale[-1] ** (1 / self.p) * u
+
+            if additional_output is not None:
+                if len(scale) == 1:
+                    scale = np.repeat(scale, len(additional_output))
+
+                for s, (p_homotopy, u_homotopy) in zip(
+                    scale, additional_output.items()
+                ):
+                    u_homotopy = s ** (1 / p_homotopy) * u_homotopy
 
         if additional_output is None:
             return u
