@@ -14,6 +14,18 @@ class Dataset:
         result = Dataset(data[:cutoff], labels[:cutoff], metric)
         return result
 
+    def sample(self, size, rng=None):
+        if rng is None:
+            rng = np.random.default_rng()
+
+        sample = rng.choice(a=self.data.shape[0], size=size)
+        result = Dataset(
+            data=self.data[sample].copy(),
+            labels=self.labels[sample].copy(),
+            metric=self.metric,
+        )
+        return result
+
     def copy(self):
         return Dataset(
             data=self.data.copy(), labels=self.labels.copy(), metric=self.metric

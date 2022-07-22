@@ -230,9 +230,7 @@ class Poisson(gl.ssl.ssl):
             u = V @ (L @ (V.T @ source))
         elif self.solver == "variational":
             if self.homotopy_start is None:
-                u = self._fit_cg(self.G, source)[
-                    :, 0
-                ]  # Initialize with solution for p=2
+                u = self._fit_cg(self.G, source)  # Initialize with solution for p=2
             else:
                 u = self.homotopy_start.copy()
 
@@ -247,9 +245,19 @@ class Poisson(gl.ssl.ssl):
 
             additional_output = {2: u}
             for p_homotopy in homotopy_steps:
-                u = self._fit_variational(u, source[:, 0], self.W, p_homotopy)
+                num_classes = source.shape[1]
+                if num_classes == 2:  # Binary classification
+                    u[:, 0] = self._fit_variational(
+                        u[:, 0], source[:, 0], self.W, p_homotopy
+                    )
+                    u[:, 1] = -u[:, 0]
+                else:
+                    for i in range(num_classes):
+                        u[:, i] = self._fit_variational(
+                            u[:, i], source[:, i], self.W, p_homotopy
+                        )
+
                 additional_output[p_homotopy] = u.copy()
-            u = u[:, np.newaxis]
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
 
