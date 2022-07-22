@@ -83,6 +83,10 @@ def save_results(results, name, folder):
             run["tol"] = result["tol"]
         if "max_iter" in result:
             run["max_iter"] = result["max_iter"]
+        if "dataset" in result:
+            run["dataset"] = result["dataset"]
+        if "dataset_metric" in result:
+            run["dataset_metric"] = result["dataset_metric"]
 
         hash = _compute_run_hash(run)
         run["hash"] = hash

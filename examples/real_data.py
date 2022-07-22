@@ -22,10 +22,14 @@ def run_trial(experiments, seed):
     LOGGER.info(f"Running trial with seed='{seed}'")
     rng = np.random.default_rng(seed=seed)
 
-    dataset = pl.datasets.Dataset.load("mnist", metric="vae")
-
     trial_results = []
     for experiment in experiments:
+        dataset = pl.datasets.Dataset.load(
+            experiment["dataset"], metric=experiment["dataset_metric"],
+        )
+        LOGGER.info(
+            f"Dataset: {experiment['dataset']}, metric: {experiment['dataset_metric']}"
+        )
         dataset_sample = dataset.sample(size=experiment["n"], rng=rng)
         G, indices_largest_component = utils.build_graph(
             dataset_sample, experiment, n_neighbors=experiment["n_neighbors"]
@@ -68,13 +72,14 @@ def run_trial(experiments, seed):
                 )
             item["p"] = p_homotopy
             item["solution"] = result
+            item["seed"] = seed
             trial_results.append(item)
 
     return trial_results
 
 
 if __name__ == "__main__":
-    experiments = storage.load_experiments("mnist", "examples/experiments")
+    experiments = storage.load_experiments("real_data", "examples/experiments")
 
     NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
     func = partial(run_trial, experiments)
@@ -85,4 +90,4 @@ if __name__ == "__main__":
         trial_results = [func(seed) for seed in range(NUM_TRIALS)]
     results = [x for flatten in trial_results for x in flatten]
 
-    storage.save_results(results, name="mnist", folder="results")
+    storage.save_results(results, name="real_data", folder="results")

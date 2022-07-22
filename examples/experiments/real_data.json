@@ -1,0 +1,17 @@
+[
+    {
+        "n": 5000,
+        "p": [
+            2,
+            3,
+            4
+        ],
+        "n_neighbors": 10,
+        "labels_per_class": 5,
+        "kernel": "gaussian",
+        "tol": 1e-2,
+        "max_iter": 200,
+        "dataset": "cifar",
+        "dataset_metric": "aet"
+    }
+]
