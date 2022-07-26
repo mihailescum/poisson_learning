@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Mihailescu
+    given-names: Max Eric
+title: "Poisson Learning Experiments"
+version: 0.1
+date-released: 2022-06-25
