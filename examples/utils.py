@@ -67,11 +67,13 @@ def get_normalization_constant(kernel, d, p=[2]):
 
 
 def _get_normalization_constant(kernel, d, p):
-    sigma = None
+    sigma_all = {}
     if kernel == "uniform":
         if d == 1:
             # integrate -1 to 1: t^2 dt
-            sigma = 2 / 3
+            sigma_all = {
+                2: 2 / 3,
+            }
     elif kernel == "gaussian":
         if d == 1:
             sigma_all = {
@@ -84,7 +86,6 @@ def _get_normalization_constant(kernel, d, p):
                 26: 0.00185778,
                 32: 0.00143257,
             }
-            sigma = sigma_all.get(p, None)
         elif d == 2:
             sigma_all = {
                 # integrate B_1(0): exp(-4r^2)(r*cos(t))^2 r dtdr
@@ -111,8 +112,8 @@ def _get_normalization_constant(kernel, d, p):
                 90: 0.526978 * 0.000217563,
                 100: 0.500074 * 0.0001945035,
             }
-            sigma = sigma_all.get(p, None)
 
+    sigma = sigma_all.get(p, None)
     if sigma is None:
         raise ValueError("Unsupported combination of inputs")
     return sigma
@@ -223,7 +224,7 @@ def run_experiment_graphconfig(
     dataset.data = dataset.data[indices_largest_component]
     dataset.labels = dataset.labels[indices_largest_component]
 
-    preconditioner = construct_ilu_preconditioner(W)
+    preconditioner = construct_ilu_preconditioner(G)
 
     result = []
     for bump in bumps:

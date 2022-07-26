@@ -272,7 +272,7 @@ class Poisson(gl.ssl.ssl):
             if isinstance(scale, float):
                 scale = np.array([scale])
 
-            u = self.scale[-1] ** (1 / self.p) * u
+            u = scale[-1] ** (1 / self.p) * u
 
             if additional_output is not None:
                 if len(scale) == 1:
