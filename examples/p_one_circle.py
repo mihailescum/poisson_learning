@@ -10,7 +10,7 @@ import poissonlearning as pl
 import utils
 import storage
 
-LOGGER = logging.getLogger("ex.one_circle")
+LOGGER = logging.getLogger("ex.p_one_circle")
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("pl.numerics").setLevel(logging.WARNING)
 

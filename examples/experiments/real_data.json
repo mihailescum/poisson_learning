@@ -1,17 +1,28 @@
 [
     {
-        "n": 5000,
+        "n": 7000,
         "p": [
-            2,
-            3,
-            4
+            2
         ],
         "n_neighbors": 10,
         "labels_per_class": 5,
         "kernel": "gaussian",
         "tol": 1e-2,
         "max_iter": 200,
-        "dataset": "cifar",
-        "dataset_metric": "aet"
+        "dataset": "mnist",
+        "dataset_metric": "vae"
+    },
+    {
+        "n": 7000,
+        "p": [
+            2
+        ],
+        "n_neighbors": 10,
+        "labels_per_class": 5,
+        "kernel": "gaussian",
+        "tol": 1e-2,
+        "max_iter": 200,
+        "dataset": "fashionmnist",
+        "dataset_metric": "vae"
     }
 ]
