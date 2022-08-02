@@ -261,11 +261,6 @@ class Poisson(gl.ssl.ssl):
         else:
             sys.exit("Invalid Poisson solver " + self.solver)
 
-        # Normalize for zero weighted mean
-        D = self.G.degree_vector()
-        shift = np.dot(D, u) / np.sum(D)
-        u = u - shift
-
         # Scale solution
         if self.scale is not None:
             scale = self.scale
@@ -281,7 +276,16 @@ class Poisson(gl.ssl.ssl):
                 for s, (p_homotopy, u_homotopy) in zip(
                     scale, additional_output.items()
                 ):
-                    u_homotopy = s ** (1 / p_homotopy) * u_homotopy
+                    u_homotopy *= s ** (1 / (p_homotopy - 1))
+
+        # Normalize for zero weighted mean
+        D = self.G.degree_vector()
+        shift = np.dot(D, u) / np.sum(D)
+        u = u - shift
+        if additional_output is not None:
+            for (p_homotopy, u_homotopy) in additional_output.items():
+                shift = np.dot(D, u_homotopy) / np.sum(D)
+                u_homotopy -= shift
 
         if additional_output is None:
             return u

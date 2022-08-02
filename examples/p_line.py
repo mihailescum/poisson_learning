@@ -18,50 +18,38 @@ NUM_TRIALS = 1
 NUM_THREADS = 4
 
 
-def estimate_epsilon(n):
-    factor = 0.7
-    conn_radius = np.log(n) ** (3 / 4) / np.sqrt(n)
-    epsilon = factor * np.log(n) ** (1 / 15) * conn_radius
-    return epsilon
-
-
 def run_trial(experiments, seed):
     LOGGER.info(f"Running trial with seed='{seed}'")
     rng = np.random.default_rng(seed=seed)
 
-    data, labels = pl.datasets.one_circle.generate(
-        center=np.array([0, 0]), r=1, size=1000000, rng=rng,
-    )
-    # Add two label points at the beginning of the data set
-
-    label_locations = experiments[0]["label_locations"]
-    data[0] = label_locations[0]
-    data[1] = label_locations[1]
-    labels[0] = 0
-    labels[1] = 1
+    data = rng.uniform(-1.0, 1.0, size=50000)[:, np.newaxis]
+    labels = np.sign(data)
 
     trial_result = []
     for experiment in experiments:
         n = experiment["n"]
-        dataset = pl.datasets.Dataset(data[:n].copy(), labels[:n].copy(), metric="raw")
+        data_local = data[:n].copy()
+        labels_local = labels[:n].copy()
+        labels_local -= np.mean(labels_local)
+        dataset = pl.datasets.Dataset(data_local, labels_local, metric="raw")
 
-        rho2 = 1.0 / (np.pi * np.pi)
-        solution = utils.run_experiment_poisson(
-            dataset, experiment, rho2=rho2, tol=1e-5, max_iter=200,
-        )
+        rho2 = 0.25
+        experiment["label_locations"] = dataset.labels
+        solution = utils.run_experiment_poisson(dataset, experiment, rho2=rho2)
 
         for s in solution:
             indices_largest_component = s["largest_component"]
 
             for p, homotopy_solution in s["solution"].items():
-                result = pd.DataFrame(columns=["x", "y", "z"])
-                result["x"] = dataset.data[indices_largest_component, 0]
-                result["y"] = dataset.data[indices_largest_component, 1]
-                result["z"] = homotopy_solution[:, 0]
+                result = pd.Series(
+                    homotopy_solution[:, 0],
+                    index=dataset.data[indices_largest_component, 0],
+                ).sort_index()
 
                 item = copy.deepcopy(experiment)
                 item["bump"] = s["bump"]
                 item["p"] = p
+                item.pop("label_locations", None)
 
                 if "eps" in s:
                     item["eps"] = s["eps"]
@@ -78,7 +66,7 @@ def run_trial(experiments, seed):
 
 
 if __name__ == "__main__":
-    experiments = storage.load_experiments("p_one_circle", "examples/experiments")
+    experiments = storage.load_experiments("p_line", "examples/experiments")
 
     NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
     func = partial(run_trial, experiments)
@@ -89,4 +77,4 @@ if __name__ == "__main__":
         trial_results = [func(seed) for seed in range(NUM_TRIALS)]
     results = [x for flatten in trial_results for x in flatten]
 
-    storage.save_results(results, name="p_one_circle", folder="results")
+    storage.save_results(results, name="p_line", folder="results")

@@ -45,7 +45,7 @@ def plot_graph_function_with_triangulation(ax, data, z, dist, max_dist):
 
 
 def plot_graph_function_scatter(ax, data, z, dist, max_dist):
-    ax.view_init(elev=25, azim=-90)
+    ax.view_init(elev=20, azim=-110)
 
     xs = data[:, 0]
     ys = data[:, 1]

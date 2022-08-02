@@ -73,18 +73,23 @@ def _get_normalization_constant(kernel, d, p):
             # integrate -1 to 1: t^2 dt
             sigma_all = {
                 2: 2 / 3,
+                3: 1 / 2,
+                4: 2 / 5,
+                5: 1 / 3,
+                6: 2 / 7,
+                8: 2 / 9,
             }
     elif kernel == "gaussian":
         if d == 1:
             sigma_all = {
                 2: 0.10568,
+                3: 0.056776,
                 4: 0.035052,
+                5: 0.023809,
+                6: 0.017328,
                 8: 0.010583,
-                12: 0.00549624,
-                16: 0.00358198,
-                20: 0.002624,
-                26: 0.00185778,
-                32: 0.00143257,
+                12: 0.0055,
+                16: 0.0036,
             }
         elif d == 2:
             sigma_all = {
@@ -130,12 +135,21 @@ def get_rhs(dataset, train_ind, bump):
         )
     elif bump == "dirac":
         rhs = None
+    elif bump == "rhs":
+        rhs = train_labels
+
     return rhs
 
 
 def run_experiment_poisson(dataset, experiment, rho2=1):
     LOGGER.info(
-        "Experiment: {}".format({k: v for k, v in experiment.items() if k != "results"})
+        "Experiment: {}".format(
+            {
+                k: v
+                for k, v in experiment.items()
+                if k not in ["results", "label_locations"]
+            }
+        )
     )
     label_locations = experiment["label_locations"]
     train_ind = np.arange(len(label_locations))
@@ -201,7 +215,7 @@ def run_experiment_graphconfig(
     p_homotopy = experiment.get("p", None)
     p = 2 if p_homotopy is None else p_homotopy[-1]
     solver = "conjugate_gradient" if p_homotopy is None else "variational"
-    eta = None if p_homotopy is None else lambda x: np.exp(-x)
+    eta = None  # if p_homotopy is None else lambda x: np.exp(-x)
 
     G, indices_largest_component = build_graph(
         dataset, experiment, eps=eps, n_neighbors=n_neighbors, eta=eta
@@ -215,7 +229,7 @@ def run_experiment_graphconfig(
             scale = 0.5 * sigma * rho2 * (eps ** 2) * n ** 2
         else:
             sigma = get_normalization_constant(experiment["kernel"], d, p_homotopy)
-            scale = 0.5 * sigma * rho2 * (eps ** p_homotopy) * n ** 2
+            scale = 0.5 * sigma * rho2 * (eps ** p_homotopy)
     elif n_neighbors is not None:
         scale = None
     else:
@@ -229,6 +243,8 @@ def run_experiment_graphconfig(
     result = []
     for bump in bumps:
         rhs = get_rhs(dataset, train_ind, bump)
+        if bump == "rhs" and scale is not None:
+            scale *= n
 
         LOGGER.info("Solving Poisson problem...")
         poisson = pl.algorithms.Poisson(

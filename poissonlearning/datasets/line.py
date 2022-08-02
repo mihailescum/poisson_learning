@@ -13,7 +13,7 @@ def generate(low, high, size, rng=None):
     data[1] = low + 0.9 * (high - low)
 
     data = data[:, np.newaxis]
-    labels = np.where(data[:, 0] > 0.5, 1, 0)
+    labels = np.where(data[:, 0] > (low + high) / 2, 1, 0)
 
     return data, labels
 
