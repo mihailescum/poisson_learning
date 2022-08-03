@@ -39,41 +39,46 @@ def run_trial(experiments, seed):
         dataset_sample.data = dataset_sample.data[indices_largest_component]
         dataset_sample.labels = dataset_sample.labels[indices_largest_component]
 
-        train_ind = gl.trainsets.generate(
-            dataset_sample.labels, rate=experiment["labels_per_class"], seed=seed,
+        labels_per_class = (
+            experiment["labels_per_class"]
+            if isinstance(experiment["labels_per_class"], (list, np.ndarray))
+            else [experiment["labels_per_class"]]
         )
-        train_labels = dataset_sample.labels[train_ind]
 
-        LOGGER.info(f"Fitting model...")
-        model = pl.algorithms.Poisson(
-            W,
-            p=(max(experiment["p"]) - 1),
-            homotopy_steps=experiment["p"],
-            solver="variational",
-            normalization="combinatorial",
-            tol=experiment["tol"],
-            max_iter=experiment["max_iter"],
-        )
-        _, fit = model.fit(train_ind, train_labels)
-        for p_homotopy, u_homotopy in fit.items():
-            result = pd.DataFrame(
-                columns=["x", "y"] + [f"z{k}" for k in range(u_homotopy.shape[1])]
+        for num_train_labels in labels_per_class:
+            num_train_labels = int(num_train_labels)
+            train_ind = gl.trainsets.generate(
+                dataset_sample.labels, rate=num_train_labels, seed=seed,
             )
-            result["x"] = dataset_sample.data[:, 0]
-            result["y"] = dataset_sample.data[:, 1]
-            result["true_labels"] = dataset_sample.labels
-            for k in range(u_homotopy.shape[1]):
-                result[f"z{k}"] = u_homotopy[:, k]
+            train_labels = dataset_sample.labels[train_ind]
 
-            item = experiment.copy()
-            if isinstance(item["labels_per_class"], int):
-                item["labels_per_class"] = np.full(
-                    u_homotopy.shape[1], item["labels_per_class"]
+            LOGGER.info(f"Fitting model...")
+            model = pl.algorithms.Poisson(
+                W,
+                p=(max(experiment["p"]) - 1),
+                homotopy_steps=experiment["p"],
+                solver="variational",
+                normalization="combinatorial",
+                tol=experiment["tol"],
+                max_iter=experiment["max_iter"],
+            )
+            _, fit = model.fit(train_ind, train_labels)
+            for p_homotopy, u_homotopy in fit.items():
+                result = pd.DataFrame(
+                    columns=["x", "y"] + [f"z{k}" for k in range(u_homotopy.shape[1])]
                 )
-            item["p"] = p_homotopy
-            item["solution"] = result
-            item["seed"] = seed
-            trial_results.append(item)
+                result["x"] = dataset_sample.data[:, 0]
+                result["y"] = dataset_sample.data[:, 1]
+                result["true_labels"] = dataset_sample.labels
+                for k in range(u_homotopy.shape[1]):
+                    result[f"z{k}"] = u_homotopy[:, k]
+
+                item = experiment.copy()
+                item["labels_per_class"] = num_train_labels
+                item["p"] = p_homotopy
+                item["solution"] = result
+                item["seed"] = seed
+                trial_results.append(item)
 
     return trial_results
 
