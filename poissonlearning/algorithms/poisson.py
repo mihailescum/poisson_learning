@@ -128,6 +128,7 @@ class Poisson(gl.ssl.ssl):
         self.L = None
         self.G = None
         self.W = None
+        self.convergence_info = None
 
         # Setup accuracy filename
         fname = "_poisson"
@@ -297,13 +298,14 @@ class Poisson(gl.ssl.ssl):
             self.L = G.laplacian(normalization=self.normalization).tocsr()
 
         if self.normalization == "combinatorial":
-            u = numerics.conjgrad(
+            u, convergence = numerics.conjgrad(
                 self.L,
                 source,
                 tol=self.tol,
                 max_iter=self.max_iter,
                 preconditioner=self.preconditioner,
             )
+            self.convergence_info = convergence
             # u = gl.utils.conjgrad(L, source, tol=self.tol, max_iter=self.max_iter)
             # u = np.empty_like(source, dtype="float64")
             # D = G.degree_matrix()

@@ -117,8 +117,9 @@ Convenience functions for computing the (log) determinant of the matrix that has
                 err = 0.0
             else:
                 LOGGER.exception("Residual is NaN!")
-                return x
+                break
         rsold = rsnew
         logger.info(f"CG - It: {i}; error: {err}")
 
-    return x
+    convergence = {"error": err}
+    return x, convergence

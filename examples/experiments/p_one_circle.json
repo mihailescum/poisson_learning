@@ -1,7 +1,7 @@
 [
     {
         "n": 10000,
-        "eps": 0.042913095,
+        "eps": 0.06130442,
         "kernel": "gaussian",
         "bump": [
             "dirac"
@@ -43,7 +43,7 @@
     },
     {
         "n": 20000,
-        "eps": 0.042913095,
+        "eps": 0.0459951458,
         "kernel": "gaussian",
         "bump": [
             "dirac"
@@ -85,7 +85,7 @@
     },
     {
         "n": 30000,
-        "eps": 0.042913095,
+        "eps": 0.0388059,
         "kernel": "gaussian",
         "bump": [
             "dirac"

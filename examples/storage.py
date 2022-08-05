@@ -87,6 +87,8 @@ def save_results(results, name, folder):
             run["dataset"] = result["dataset"]
         if "dataset_metric" in result:
             run["dataset_metric"] = result["dataset_metric"]
+        if "error" in result:
+            run["error"] = result["error"]
 
         hash = _compute_run_hash(run)
         run["hash"] = hash

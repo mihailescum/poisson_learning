@@ -13,7 +13,7 @@ import storage
 LOGGER = logging.getLogger("ex.one_circle")
 logging.basicConfig(level="INFO")
 
-NUM_TRIALS = 4
+NUM_TRIALS = 1
 NUM_THREADS = 4
 
 
@@ -65,7 +65,7 @@ def run_trial(experiments, seed):
 
 
 if __name__ == "__main__":
-    experiments = storage.load_experiments("one_circle", "examples/experiments")
+    experiments = storage.load_experiments("one_circle_test", "examples/experiments")
 
     NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
     func = partial(run_trial, experiments)

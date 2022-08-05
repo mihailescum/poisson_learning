@@ -33,9 +33,7 @@ def run_trial(experiments, seed):
         dataset = pl.datasets.Dataset(data[:n].copy(), labels[:n].copy(), metric="raw")
 
         rho2 = 1  # Density of the probability distribution
-        solution = utils.run_experiment_poisson(
-            dataset, experiment, rho2=rho2, tol=1e-8, max_iter=200,
-        )
+        solution = utils.run_experiment_poisson(dataset, experiment, rho2=rho2,)
 
         for s in solution:
             indices_largest_component = s["largest_component"]

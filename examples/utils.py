@@ -12,10 +12,12 @@ LOGGER = logging.getLogger(name=__name__)
 
 def estimate_epsilon(n, d):
     if d == 1:
-        epsilon = 15 * np.log(n) / n
+        # epsilon = 15 * np.log(n) / n
+        conn_radius = np.sqrt(np.log(np.log(n)) / n)
+        epsilon = np.log(n) ** (1 / 6) * conn_radius
     elif d == 2:
         conn_radius = np.log(n) ** (3 / 4) / np.sqrt(n)
-        epsilon = 2.0 * np.log(n) ** (1 / 15) * conn_radius
+        epsilon = np.log(n) ** (1 / 15) * conn_radius
     else:
         raise ValueError("Unsupported dimension")
 
@@ -217,6 +219,8 @@ def run_experiment_graphconfig(
     solver = "conjugate_gradient" if p_homotopy is None else "variational"
     eta = None  # if p_homotopy is None else lambda x: np.exp(-x)
 
+    rhs = get_rhs(dataset, train_ind, 0.01)
+
     G, indices_largest_component = build_graph(
         dataset, experiment, eps=eps, n_neighbors=n_neighbors, eta=eta
     )
@@ -260,6 +264,9 @@ def run_experiment_graphconfig(
             homotopy_steps=p_homotopy,
         )
         fit = poisson.fit(train_ind, train_labels)
+        error = None
+        if poisson.convergence_info:
+            error = poisson.convergence_info["error"]
 
         if p_homotopy is None:
             fit = fit[:, 0]
@@ -272,6 +279,7 @@ def run_experiment_graphconfig(
             "largest_component": indices_largest_component,
             "tol": experiment["tol"],
             "max_iter": experiment["max_iter"],
+            "error": error,
         }
         if eps is not None:
             item["eps"] = eps
@@ -283,3 +291,10 @@ def run_experiment_graphconfig(
         result.append(item)
 
     return result
+
+
+if __name__ == "__main__":
+    n = [1000, 10000, 20000, 35000, 50000, 70000, 100000, 200000, 300000]
+    d = 1
+    for _n in n:
+        print(f"{_n}: {estimate_epsilon(_n, d)}")
