@@ -1,6 +1,6 @@
 [
     {
-        "n": 7000,
+        "n": 5000,
         "p": [
             2,
             3,
@@ -18,12 +18,12 @@
         ],
         "kernel": "gaussian",
         "tol": 1e-4,
-        "max_iter": 200,
+        "max_iter": 100,
         "dataset": "mnist",
         "dataset_metric": "vae"
     },
     {
-        "n": 7000,
+        "n": 5000,
         "p": [
             2,
             3,
@@ -41,7 +41,7 @@
         ],
         "kernel": "gaussian",
         "tol": 1e-4,
-        "max_iter": 200,
+        "max_iter": 100,
         "dataset": "fashionmnist",
         "dataset_metric": "vae"
     }

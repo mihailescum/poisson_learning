@@ -126,7 +126,7 @@ class Poisson(gl.ssl.ssl):
         self.homotopy_start = homotopy_start
         self.preconditioner = preconditioner
         self.L = None
-        self.G = None
+        self.G = Nonehomotopy
         self.W = None
         self.convergence_info = None
 
@@ -359,7 +359,7 @@ class Poisson(gl.ssl.ssl):
             D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
             L = D - A
 
-            Lf = numerics.conjgrad(
+            Lf, _ = numerics.conjgrad(
                 L, source, preconditioner="ilu", tol=1e-10, max_iter=self.max_iter,
             )
             u = 1 / (p - 1) * ((p - 2) * u + Lf)

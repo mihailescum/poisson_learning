@@ -11,11 +11,19 @@ import logging
 import storage
 import utils
 
-LOGGER = logging.getLogger("mnist")
-logging.basicConfig(level="INFO")
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s:%(name)-10s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,
+)
+LOGGER = logging.getLogger("ex.real_data")
+logging.getLogger("pl.numerics").setLevel(logging.WARNING)
+logging.getLogger("pl.poisson").setLevel(logging.WARNING)
 
-NUM_TRIALS = 1
-NUM_THREADS = 4
+NUM_TRIALS = 4
+SEED_START = 2
+NUM_THREADS = 2
 
 
 def run_trial(experiments, seed):
@@ -52,7 +60,7 @@ def run_trial(experiments, seed):
             )
             train_labels = dataset_sample.labels[train_ind]
 
-            LOGGER.info(f"Fitting model...")
+            LOGGER.info(f"Fitting model..., labels per class: {num_train_labels}")
             model = pl.algorithms.Poisson(
                 W,
                 p=(max(experiment["p"]) - 1),
@@ -90,9 +98,11 @@ if __name__ == "__main__":
     func = partial(run_trial, experiments)
     if NUM_THREADS > 1:
         pool = multiprocessing.Pool(NUM_THREADS)
-        trial_results = pool.map(func, range(NUM_TRIALS))
+        trial_results = pool.map(func, range(SEED_START, SEED_START + NUM_TRIALS))
     else:
-        trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+        trial_results = [
+            func(seed) for seed in range(SEED_START, SEED_START + NUM_TRIALS)
+        ]
     results = [x for flatten in trial_results for x in flatten]
 
     storage.save_results(results, name="real_data", folder="results")
