@@ -219,8 +219,6 @@ def run_experiment_graphconfig(
     solver = "conjugate_gradient" if p_homotopy is None else "variational"
     eta = None  # if p_homotopy is None else lambda x: np.exp(-x)
 
-    rhs = get_rhs(dataset, train_ind, 0.01)
-
     G, indices_largest_component = build_graph(
         dataset, experiment, eps=eps, n_neighbors=n_neighbors, eta=eta
     )
@@ -263,15 +261,19 @@ def run_experiment_graphconfig(
             preconditioner=preconditioner,
             homotopy_steps=p_homotopy,
         )
-        fit = poisson.fit(train_ind, train_labels)
-        error = None
-        if poisson.convergence_info:
-            error = poisson.convergence_info["error"]
+        try:
+            fit = poisson.fit(train_ind, train_labels)
+            error = None
+            if poisson.convergence_info:
+                error = poisson.convergence_info["error"]
 
-        if p_homotopy is None:
-            fit = fit[:, 0]
-        else:
-            fit = fit[1]
+            if p_homotopy is None:
+                fit = fit[:, 0]
+            else:
+                fit = fit[1]
+        except Exception as e:
+            error = str(e)
+            fit = None
 
         item = {
             "bump": bump,

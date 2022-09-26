@@ -126,7 +126,7 @@ class Poisson(gl.ssl.ssl):
         self.homotopy_start = homotopy_start
         self.preconditioner = preconditioner
         self.L = None
-        self.G = Nonehomotopy
+        self.G = None
         self.W = None
         self.convergence_info = None
 
@@ -347,10 +347,17 @@ class Poisson(gl.ssl.ssl):
         D = sparse.spdiags(A.sum(axis=1).A1, diags=0, m=n, n=n, format="csc")
         L = D - A
         res = np.max(np.abs(L @ u - source))
+        res_old = res + 1
 
         it = 0
         logger.info(f"Variational - It: {it}; Res: {res}; Amax: {L.max()}")
-        while it < self.max_iter and res > self.tol:
+        while (
+            it < self.max_iter
+            and res > self.tol
+            and np.abs(res - res_old) > self.tol * 1e-2
+        ):
+            res_old = res
+
             nonzero = W.nonzero()
             values = np.abs(u[nonzero[0]] - u[nonzero[1]]) ** (p - 2)
             a = sparse.csc_matrix((values, nonzero), shape=(n, n))

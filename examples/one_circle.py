@@ -10,11 +10,18 @@ import poissonlearning as pl
 import utils
 import storage
 
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s:%(name)-10s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,
+)
 LOGGER = logging.getLogger("ex.one_circle")
-logging.basicConfig(level="INFO")
+logging.getLogger("pl.numerics").setLevel(logging.WARNING)
+logging.getLogger("pl.poisson").setLevel(logging.WARNING)
 
-NUM_TRIALS = 1
-NUM_THREADS = 4
+SEED_RANGE = range(4, 10)
+NUM_THREADS = 2
 
 
 def run_trial(experiments, seed):
@@ -65,15 +72,15 @@ def run_trial(experiments, seed):
 
 
 if __name__ == "__main__":
-    experiments = storage.load_experiments("one_circle_test", "examples/experiments")
+    experiments = storage.load_experiments("one_circle", "examples/experiments")
 
-    NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
+    NUM_THREADS = min(NUM_THREADS, len(SEED_RANGE))
     func = partial(run_trial, experiments)
     if NUM_THREADS > 1:
         pool = multiprocessing.Pool(NUM_THREADS)
-        trial_results = pool.map(func, range(NUM_TRIALS))
+        trial_results = pool.map(func, SEED_RANGE)
     else:
-        trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+        trial_results = [func(seed) for seed in SEED_RANGE]
     results = [x for flatten in trial_results for x in flatten]
 
-    storage.save_results(results, name="one_circle", folder="results")
+    storage.save_results(results, name="one_circle_2", folder="results")

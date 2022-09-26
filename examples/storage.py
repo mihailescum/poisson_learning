@@ -93,7 +93,7 @@ def save_results(results, name, folder):
         hash = _compute_run_hash(run)
         run["hash"] = hash
 
-        hdf.put(f"results/hash_{hash}", result["solution"])
+        hdf.put(f"results/hash_{hash}", result.get("solution", None))
         experiment_runs.append(run)
 
     hdf.close()

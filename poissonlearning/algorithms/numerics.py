@@ -86,10 +86,11 @@ Convenience functions for computing the (log) determinant of the matrix that has
         rsold = np.diagonal(rsold)
 
     err = np.sqrt(np.sum(rsold))
+    err_old = err + 1
     i = 0
 
     logger.info(f"CG - It: {i}; error: {err}")
-    while (err > tol) and (i < max_iter):
+    while err > tol and i < max_iter and np.abs(err - err_old) > tol * 1e-2:
 
         i += 1
         Ap = A @ p

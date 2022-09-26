@@ -14,7 +14,7 @@ LOGGER = logging.getLogger("ex.p_line")
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("pl.numerics").setLevel(logging.WARNING)
 
-NUM_TRIALS = 1
+NUM_TRIALS = 12
 NUM_THREADS = 4
 
 

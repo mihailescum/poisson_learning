@@ -14,8 +14,8 @@ LOGGER = logging.getLogger("ex.p_one_circle")
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("pl.numerics").setLevel(logging.WARNING)
 
-NUM_TRIALS = 1
-NUM_THREADS = 4
+NUM_TRIALS = 4
+NUM_THREADS = 2
 
 
 def estimate_epsilon(n):
@@ -51,25 +51,32 @@ def run_trial(experiments, seed):
         for s in solution:
             indices_largest_component = s["largest_component"]
 
-            for p, homotopy_solution in s["solution"].items():
-                result = pd.DataFrame(columns=["x", "y", "z"])
-                result["x"] = dataset.data[indices_largest_component, 0]
-                result["y"] = dataset.data[indices_largest_component, 1]
-                result["z"] = homotopy_solution[:, 0]
+            if s["solution"] is not None:
+                for p, homotopy_solution in s["solution"].items():
+                    result = pd.DataFrame(columns=["x", "y", "z"])
+                    result["x"] = dataset.data[indices_largest_component, 0]
+                    result["y"] = dataset.data[indices_largest_component, 1]
+                    result["z"] = homotopy_solution[:, 0]
 
+                    item = copy.deepcopy(experiment)
+                    item["bump"] = s["bump"]
+                    item["p"] = p
+
+                    if "eps" in s:
+                        item["eps"] = s["eps"]
+                        item.pop("n_neighbors", None)
+                    elif "n_neighbors" in s:
+                        item["n_neighbors"] = s["n_neighbors"]
+                        item.pop("eps", None)
+
+                    item["seed"] = seed
+                    item["solution"] = result
+                    item["error"] = s["error"]
+                    trial_result.append(item)
+            else:
                 item = copy.deepcopy(experiment)
-                item["bump"] = s["bump"]
-                item["p"] = p
-
-                if "eps" in s:
-                    item["eps"] = s["eps"]
-                    item.pop("n_neighbors", None)
-                elif "n_neighbors" in s:
-                    item["n_neighbors"] = s["n_neighbors"]
-                    item.pop("eps", None)
-
-                item["seed"] = seed
-                item["solution"] = result
+                item["error"] = s["error"]
+                item["solution"] = None
                 trial_result.append(item)
 
     return trial_result
