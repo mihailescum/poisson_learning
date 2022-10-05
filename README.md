@@ -24,7 +24,7 @@ For some of the experiments you can configure the number of threads to use using
 ## Description of the experiments:
 
 * `line`: 1D experiment for Poisson learning on the unit interval `(0, 1)` with two labeled nodes, one at `0.4`, one at `0.8`.
-* `p_line`: Same as `line`, only that we do `p`-Poisson learning for a range of values of `p`.
-* `one_circle`: 2D experiment for Poisson learning on the unit disc `B_1(0)` with two labeled nodes, one at `(-2/3, 0)` and one at `( 2/3, 0)`.
-* `p_one_circle`: Same as `one_circle`, only that we do `p`-Poisson learning for a range of values of `p`.
-* `real_data`: `p`-Poisson learning on the two real world data sets `MNIST` and `FashionMNIST`.
+* `p_line`: Same as `line`, only that we do p-Poisson learning for a range of values of `p`.
+* `one_circle`: 2D experiment for Poisson learning on the unit disc `B_1(0)` with two labeled nodes, one at `(-2/3, 0)` and one at `(2/3, 0)`.
+* `p_one_circle`: Same as `one_circle`, only that we do p-Poisson learning for a range of values of `p`.
+* `real_data`: p-Poisson learning on the two real world data sets `MNIST` and `FashionMNIST`.
