@@ -1,3 +1,4 @@
+from cmath import exp
 import numpy as np
 import pandas as pd
 
@@ -45,8 +46,11 @@ def load_results(name, folder):
     hdf = pd.HDFStore(os.path.join(folder, name + ".hd5"), mode="r")
 
     for experiment in experiments:
-        solution = hdf.get(f"results/hash_{experiment['hash']}")
-        experiment["solution"] = solution
+        if f"results/hash_{experiment['hash']}" in hdf:
+            solution = hdf.get(f"results/hash_{experiment['hash']}")
+            experiment["solution"] = solution
+        else:
+            experiment["solution"] = None
 
     hdf.close()
     return experiments
@@ -93,10 +97,24 @@ def save_results(results, name, folder):
         hash = _compute_run_hash(run)
         run["hash"] = hash
 
-        hdf.put(f"results/hash_{hash}", result.get("solution", None))
+        solution = result.get("solution", None)
+        if solution is not None:
+            hdf.put(f"results/hash_{hash}", solution)
         experiment_runs.append(run)
 
     hdf.close()
 
     with open(os.path.join(folder, name + ".json"), mode="w") as file:
         file.write(json.dumps(experiment_runs, cls=_NumpyEncoder, indent=2))
+
+
+def join_results(names, folder, output_name):
+    results_all = [load_results(name, folder) for name in names]
+    results = [e for results_sub in results_all for e in results_sub]
+    save_results(results, output_name, folder)
+
+
+if __name__ == "__main__":
+    join_results(
+        ["p_one_circle", "p_one_circle_2"], "results", "p_one_circle_joined",
+    )

@@ -83,4 +83,4 @@ if __name__ == "__main__":
         trial_results = [func(seed) for seed in SEED_RANGE]
     results = [x for flatten in trial_results for x in flatten]
 
-    storage.save_results(results, name="one_circle_2", folder="results")
+    storage.save_results(results, name="one_circle", folder="results")

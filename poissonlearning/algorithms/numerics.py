@@ -112,13 +112,17 @@ Convenience functions for computing the (log) determinant of the matrix that has
         beta = rsnew / rsold
         p = r_tilde + beta * p
 
-        err = np.sqrt(np.sum(rsnew))
-        if np.isnan(err):
+        err2 = np.sum(rsnew)
+        if err2 < 0:
             if np.all(np.isclose(rsnew, 0)):
                 err = 0.0
             else:
+                err = np.nan
                 LOGGER.exception("Residual is NaN!")
                 break
+        else:
+            err = np.sqrt(err2)
+
         rsold = rsnew
         logger.info(f"CG - It: {i}; error: {err}")
 

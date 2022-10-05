@@ -14,7 +14,7 @@ LOGGER = logging.getLogger("ex.p_one_circle")
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("pl.numerics").setLevel(logging.WARNING)
 
-NUM_TRIALS = 4
+SEED_RANGE = range(4, 10)
 NUM_THREADS = 2
 
 
@@ -85,13 +85,13 @@ def run_trial(experiments, seed):
 if __name__ == "__main__":
     experiments = storage.load_experiments("p_one_circle", "examples/experiments")
 
-    NUM_THREADS = min(NUM_THREADS, NUM_TRIALS)
+    NUM_THREADS = min(NUM_THREADS, len(SEED_RANGE))
     func = partial(run_trial, experiments)
     if NUM_THREADS > 1:
         pool = multiprocessing.Pool(NUM_THREADS)
-        trial_results = pool.map(func, range(NUM_TRIALS))
+        trial_results = pool.map(func, SEED_RANGE)
     else:
-        trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+        trial_results = [func(seed) for seed in SEED_RANGE]
     results = [x for flatten in trial_results for x in flatten]
 
-    storage.save_results(results, name="p_one_circle", folder="results")
+    storage.save_results(results, name="p_one_circle_1", folder="results")

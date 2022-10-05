@@ -10,11 +10,17 @@ import poissonlearning as pl
 import utils
 import storage
 
-LOGGER = logging.getLogger(name="ex.line")
-logging.basicConfig(level="INFO")
+logging.basicConfig(
+    format="%(asctime)s %(levelname)s:%(name)-10s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+    force=True,
+)
+LOGGER = logging.getLogger("ex.line")
+logging.getLogger("pl.numerics").setLevel(logging.WARNING)
+logging.getLogger("pl.poisson").setLevel(logging.WARNING)
 
-
-NUM_TRIALS = 1
+SEED_RANGE = range(9, 10)
 
 
 def run_trial(experiments, seed):
@@ -53,6 +59,7 @@ def run_trial(experiments, seed):
 
             item["seed"] = seed
             item["solution"] = result
+            item["error"] = s["error"]
             trial_result.append(item)
     return trial_result
 
@@ -64,7 +71,7 @@ if __name__ == "__main__":
     func = partial(run_trial, experiments)
     # pool = multiprocessing.Pool(2)
     # trial_results = pool.map(func, range(NUM_TRIALS))
-    trial_results = [func(seed) for seed in range(NUM_TRIALS)]
+    trial_results = [func(seed) for seed in SEED_RANGE]
     results = [x for flatten in trial_results for x in flatten]
 
-    storage.save_results(results, name="line", folder="results")
+    storage.save_results(results, name="line_3", folder="results")

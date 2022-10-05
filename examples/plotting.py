@@ -8,6 +8,28 @@ import pandas as pd
 import scipy.optimize
 import logging
 
+# line cyclers adapted to colourblind people
+from cycler import cycler
+
+line_cycler = cycler(
+    color=["#E69F00", "#56B4E9", "#009E73", "#0072B2", "#D55E00", "#CC79A7", "#F0E442"]
+) + cycler(linestyle=["-", "--", "-.", ":", "-", "--", "-."])
+marker_cycler = (
+    cycler(
+        color=[
+            "#E69F00",
+            "#56B4E9",
+            "#009E73",
+            "#0072B2",
+            "#D55E00",
+            "#CC79A7",
+            "#F0E442",
+        ]
+    )
+    + cycler(linestyle=["none", "none", "none", "none", "none", "none", "none"])
+    + cycler(marker=["4", "2", "3", "1", "+", "x", "."])
+)
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -89,9 +111,8 @@ def get_linestyles():
     return styles
 
 
-def error_plot(errors, ax, c="black", fit=None, label=None):
-    linestyles = get_linestyles()
-    for ls, (label, value) in zip(linestyles, errors.items()):
+def error_plot(errors, ax, fit=None, label=None, c=None):
+    for (label, value) in errors.items():
         x = list(value.keys())
         if len(x) == 0:
             continue
@@ -105,7 +126,6 @@ def error_plot(errors, ax, c="black", fit=None, label=None):
             y,
             yerr=[lower_error, upper_error],
             label="errors" if label is None else label,
-            ls=ls,
             c=c,
             capsize=5,
         )
@@ -128,16 +148,12 @@ def error_plot(errors, ax, c="black", fit=None, label=None):
 
         if fit is not None:
             LOGGER.info(f"Fitted parameters: {popt}")
-            ax.plot(xplot, yplot, c="red", ls=ls, label=f"{fit} fit")
+            ax.plot(xplot, yplot, c="red", label=f"{fit} fit")
 
     ax.grid(linestyle="dashed")
 
 
-def results_1D(experiments, ax, truth=None, num_plotting_points=5000, colors=None):
-    if colors is None:
-        colors = get_plot_colors(n=len(experiments))
-    linestyles = get_linestyles()
-
+def results_1D(experiments, ax, truth=None, num_plotting_points=5000):
     if truth is not None:
         ax.plot(
             truth.sample(num_plotting_points, random_state=1).sort_index(),
@@ -146,7 +162,7 @@ def results_1D(experiments, ax, truth=None, num_plotting_points=5000, colors=Non
             linestyle="-",
         )
 
-    for c, ls, (label, e) in zip(colors, linestyles, experiments.items()):
+    for (label, e) in experiments.items():
         label_locations = e["label_locations"][:, np.newaxis]
         dist_to_labels = np.abs(e["solution"].index.to_numpy() - label_locations)
         close_to_labels = np.any(dist_to_labels < 1e-4, axis=0)
@@ -159,4 +175,4 @@ def results_1D(experiments, ax, truth=None, num_plotting_points=5000, colors=Non
         sample = pd.concat([sample, e["solution"][close_to_labels]])
         sample = sample.sort_index()
 
-        ax.plot(sample, label=label, c=c, ls=ls)
+        ax.plot(sample, label=label)
